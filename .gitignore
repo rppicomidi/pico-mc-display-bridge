@@ -1,0 +1,4 @@
+device/build/
+host/build/
+device/.vscode/.cortex-debug.*
+host/.vscode/.cortex-debug.*
