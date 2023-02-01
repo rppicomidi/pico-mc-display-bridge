@@ -47,7 +47,7 @@ public:
     virtual ~Mc_seven_seg_display()=default;
 
     void draw() final;
-    Select_result on_select() final;
+    Select_result on_select(View**) final;
 
     /**
      * @brief Set the text in one of the seven-segment display digits

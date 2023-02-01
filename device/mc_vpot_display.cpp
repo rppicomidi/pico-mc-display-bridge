@@ -52,8 +52,8 @@ void rppicomidi::Mc_vpot_display::draw()
         p_led_on ? Pixel_state::PIXEL_ONE:Pixel_state::PIXEL_ZERO); // p LED
     // For spread mode
     uint8_t delta;
-    uint8_t min_range;
-    uint8_t max_range;
+    uint8_t min_range=0;
+    uint8_t max_range=0;
     if (mode == Vpot_mode::SPREAD) {
         delta = abs(6 - value);
         min_range = 6-delta;

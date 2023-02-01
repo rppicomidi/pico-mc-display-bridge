@@ -1,0 +1,18 @@
+[submodule "lib/pico_pico_midi_lib"]
+	path = lib/pico_pico_midi_lib
+	url = https://github.com/rppicomidi/pico_pico_midi_lib.git
+[submodule "lib/ring_buffer_lib"]
+	path = lib/ring_buffer_lib
+	url = https://github.com/rppicomidi/ring_buffer_lib.git
+[submodule "lib/pico-mono-ui-lib"]
+	path = lib/pico-mono-ui-lib
+	url = https://github.com/rppicomidi/pico-mono-ui-lib.git
+[submodule "lib/pico-ssd1306-mono-graphics-lib"]
+	path = lib/pico-ssd1306-mono-graphics-lib
+	url = https://github.com/rppicomidi/pico-ssd1306-mono-graphics-lib.git
+[submodule "ext_lib/littlefs-lib"]
+	path = ext_lib/littlefs-lib
+	url = https://github.com/rppicomidi/littlefs-lib.git
+[submodule "ext_lib/parson"]
+	path = ext_lib/parson
+	url = https://github.com/kgabis/parson.git

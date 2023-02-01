@@ -26,23 +26,25 @@
  */
 #pragma once
 #include "menu.h"
-#include "quit_text_menu_item.h"
-#include "save_settings_menu_item.h"
-#include "int_spinner.h"
+//#include "quit_text_menu_item.h"
+//#include "save_settings_menu_item.h"
+//#include "int_spinner.h"
 #include "mc_bridge_model.h"
+#include "mc_settings_file.h"
 namespace rppicomidi {
 class Setup_menu : public Menu
 {
 public:
-    Setup_menu(Mono_graphics& screen_, const Rectangle& rect_, Mc_bridge_model& model_, Mc_settings_file& settings_);
+    Setup_menu(Mono_graphics& screen_, Mc_bridge_model& model_, Mc_settings_file& settings_);
     virtual void entry();
 private:
-    Save_settings_menu_item save_exit;
-    Quit_text_menu_item quit_exit;
-    Int_spinner mc_port;
+    //Save_settings_menu_item save_exit;
+    //Quit_text_menu_item quit_exit;
+    //Int_spinner mc_port;
     static Setup_menu* _instance;
     static int get_mc_port_value();
     static void set_mc_port_value(int value_);
     Mc_bridge_model& model;
+    Mc_settings_file& settings;
 };
 }

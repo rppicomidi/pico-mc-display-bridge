@@ -135,7 +135,7 @@ void get_num_cables(uint8_t* num_rx_cables, uint8_t* num_tx_cables)
         if ( (uint32_t)desc_ept < max_addr) {
             // found an endpoint. Find the MIDIStreaming Endpoint descriptor
             const midi_cs_desc_endpoint_t* mcsed = (const midi_cs_desc_endpoint_t*)tu_desc_next(desc_ept);
-            while ((uint32_t)mcsed < max_addr && (mcsed->bDescriptorType != TUSB_DESC_CS_ENDPOINT || mcsed->bDescriptorSubType !=  MIDI_MS_ENDPOINT_GENERAL)) {
+            while ((uint32_t)mcsed < max_addr && (mcsed->bDescriptorType != TUSB_DESC_CS_ENDPOINT || mcsed->bDescriptorSubType !=  MIDI_CS_ENDPOINT_GENERAL)) {
                 mcsed = (const midi_cs_desc_endpoint_t*)tu_desc_next(desc_ept);
             }
             if ( (uint32_t)desc_ept < max_addr) {

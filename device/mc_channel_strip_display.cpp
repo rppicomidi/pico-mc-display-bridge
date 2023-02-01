@@ -60,6 +60,7 @@ rppicomidi::Mc_channel_strip_display::Mc_channel_strip_display(Mono_graphics& sc
 
 void rppicomidi::Mc_channel_strip_display::draw()
 {
+    screen.clear_canvas();
     for (auto& it : disp_objects) {
         it->draw();
     }    

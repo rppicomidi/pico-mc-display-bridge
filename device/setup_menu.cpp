@@ -3,21 +3,22 @@
 
 rppicomidi::Setup_menu* rppicomidi::Setup_menu::_instance = nullptr;
 
-rppicomidi::Setup_menu::Setup_menu(Mono_graphics& screen_, const Rectangle& rect_, Mc_bridge_model& model_, Mc_settings_file& settings_) : 
-    Menu(screen_, rect_), model{model_}, save_exit{screen_,0,0, screen_.get_font_12(),std::string("Save & Exit"), settings_},
+rppicomidi::Setup_menu::Setup_menu(Mono_graphics& screen_, Mc_bridge_model& model_, Mc_settings_file& settings_) : 
+    Menu(screen_, 0, screen_.get_font_12()), model{model_}, settings{settings_}/*,  save_exit{screen_,0,0, screen_.get_font_12(),std::string("Save & Exit"), settings_},
     quit_exit{screen_, 0, screen_.get_font_12().height, screen_.get_font_12(), std::string("Quit without saving")},
     mc_port{screen_, Rectangle(0, screen_.get_font_12().height*2, screen_.get_screen_width(), screen_.get_font_12().height),
-        std::string("MC MIDI Port:"), screen.get_font_12(), get_mc_port_value, set_mc_port_value, 1, 16,  false}
+        std::string("MC MIDI Port:"), screen.get_font_12(), get_mc_port_value, set_mc_port_value, 1, 16,  false} */
 {
     assert(_instance == nullptr);
     _instance = this;
-    add_menu_item(&save_exit);
-    add_menu_item(&quit_exit);
-    add_menu_item(&mc_port);
+    //add_menu_item(&save_exit);
+    //add_menu_item(&quit_exit);
+    //add_menu_item(&mc_port);
 }
 
 void rppicomidi::Setup_menu::entry()
 {
+    #if 0
     uint8_t cables_in, cables_out;
     model.get_num_cables(cables_in, cables_out);
     if (cables_in != cables_out)
@@ -31,6 +32,7 @@ void rppicomidi::Setup_menu::entry()
     for (auto& item: items) {
         item->set_selected(item == *current_item);
     }
+    #endif
 }
 
 int rppicomidi::Setup_menu::get_mc_port_value()

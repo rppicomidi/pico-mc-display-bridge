@@ -53,12 +53,12 @@ void rppicomidi::Mc_seven_seg_display::draw()
 {
     if (view_manager.is_current_view(this)) {
         screen.clear_canvas();
-        uint8_t tc_x = 0;
+        //uint8_t tc_x = 0;
         uint8_t tc_y = screen.get_screen_height() - seven_seg_font.height - label_font.height;
         // draw the timecode digit labels
         set_smpte_beats_leds(smpte_led, beats_led);
         // draw the timecode and mode digits
-        for (int digit = 0; digit < sizeof(digits); digit++) {
+        for (size_t digit = 0; digit < sizeof(digits); digit++) {
             set_seven_seg_digit(digit, digits[digit]);
         }
         // draw the mode label
@@ -66,7 +66,7 @@ void rppicomidi::Mc_seven_seg_display::draw()
     }
 }
 
-rppicomidi::Mc_seven_seg_display::Select_result rppicomidi::Mc_seven_seg_display::on_select()
+rppicomidi::Mc_seven_seg_display::Select_result rppicomidi::Mc_seven_seg_display::on_select(View**)
 {
     printf("setup menu requested\r\n");
     view_manager.push_view(&setup_menu);
@@ -151,7 +151,7 @@ bool rppicomidi::Mc_seven_seg_display::set_digit_by_mc_cc(uint8_t byte1, uint8_t
     bool success = true;
     if ((byte1 & 0xf0) == 0x40) {
         uint8_t digit = byte1 & 0xf;
-        char symbol;
+        char symbol = ' ';
         byte2 &= 0x3f; //strip off the decimal point
         if (digit < 12) {
             if (byte2 < 0x20) {

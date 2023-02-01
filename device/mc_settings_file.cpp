@@ -66,7 +66,7 @@ int rppicomidi::Mc_settings_file::load_settings_string(char** raw_settings_ptr)
                 pico_unmount();
                 return LFS_ERR_NOMEM; // new failed
             }
-            auto nread = pico_read(file, *raw_settings_ptr, flen);
+            lfs_soff_t nread = pico_read(file, *raw_settings_ptr, flen);
             pico_close(file);
             pico_unmount();
             if (nread == flen) {
@@ -102,7 +102,7 @@ bool rppicomidi::Mc_settings_file::load()
 
 int rppicomidi::Mc_settings_file::store()
 {
-    char* raw_settings;
+    //char* raw_settings;
 
     // Serialize to a string for storage
     char* settings_str = model.serialize();

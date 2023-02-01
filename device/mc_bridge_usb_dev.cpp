@@ -50,9 +50,9 @@
 #include "../common/pico-mc-display-bridge-cmds.h"
 #include "mc_bridge_model.h"
 #include "mc_settings_file.h"
-#include "core1_gpio_lib.h"
+//#include "core1_gpio_lib.h"
 #include "view_manager.h"
-#include "setup_menu.h"
+//#include "setup_menu.h"
 
 // On-board LED mapping. If no LED, set to NO_LED_GPIO
 const uint NO_LED_GPIO = 255;
@@ -107,6 +107,7 @@ public:
     uint8_t addr[1];
     const uint8_t MUX_ADDR=0;
     uint8_t* mux_map=nullptr;
+    static const uint8_t num_chan_displays = 8;
     const uint8_t OLED_CH_1_SDA_GPIO = 6;
     const uint8_t OLED_CH_1_SCL_GPIO = 7;
     const uint8_t OLED_CH_2_SDA_GPIO = 8;
@@ -152,7 +153,7 @@ public:
     Mono_graphics screen5;
     Mono_graphics screen6;
     Mono_graphics screen7;
-    Mono_graphics* screen[8];
+    Mono_graphics* screen[num_chan_displays];
     Mono_graphics screen_tc;
     Mc_channel_strip_display channel_disp0;
     Mc_channel_strip_display channel_disp1;
@@ -162,7 +163,7 @@ public:
     Mc_channel_strip_display channel_disp5;
     Mc_channel_strip_display channel_disp6;
     Mc_channel_strip_display channel_disp7;
-    Mc_channel_strip_display* channel_disp[8];
+    Mc_channel_strip_display* channel_disp[num_chan_displays];
     View_manager tc_view_manager;
     Mc_bridge_model model;
     Mc_settings_file settings_file;
@@ -172,7 +173,7 @@ public:
 
     // TODO group these two into an array of structs; one element for every virtual cable
     uint8_t sysex_message[max_sysex]; // TODO: make one for every virtual cable for this device
-    int sysex_idx;  // the index into the sysex_message array // TODO: make one for every virtual cable for this device
+    size_t sysex_idx;  // the index into the sysex_message array // TODO: make one for every virtual cable for this device
 
     bool waiting_for_eox;
     void *midi_uart_instance;
@@ -186,9 +187,9 @@ public:
         Operating    // Normal MIDI I/O operation
     } state;
     std::vector<uint8_t> istrings;
-    int istrings_idx;
+    size_t istrings_idx;
     std::vector<uint16_t> langids;
-    int langids_idx;
+    size_t langids_idx;
     struct Usb_string_s {
         Usb_string_s() : index{0}, length{0}, langid{0}, utf16le{nullptr} {}
         uint8_t index;  // the string index from the USB descriptor
@@ -200,13 +201,13 @@ public:
     static const uint SETTINGS_ENC_SW_GPIO=22;
     static const uint SETTINGS_ENC_A_GPIO=26;
     static const uint SETTINGS_ENC_B_GPIO=27;
-    Core1_gpio& core1_gpio;
-    int settings_enc_sw_idx;
-    int settings_enc_a_idx;
-    int settings_enc_b_idx;
-    int settings_enc_idx;
-    std::vector<int32_t> settings_enc_status;
-    bool prev_encoder_sw_pressed;
+    //Core1_gpio& core1_gpio;
+    //int settings_enc_sw_idx;
+    //int settings_enc_a_idx;
+    //int settings_enc_b_idx;
+    //int settings_enc_idx;
+    //std::vector<int32_t> settings_enc_status;
+    //bool prev_encoder_sw_pressed;
 };
 }
 static void blink_led(void)
@@ -258,37 +259,37 @@ rppicomidi::Pico_mc_display_bridge_dev::Pico_mc_display_bridge_dev()  : addr{OLE
     channel_disp7{screen7, 7},
     channel_disp{&channel_disp0,&channel_disp1,&channel_disp2,&channel_disp3,&channel_disp4,&channel_disp5,&channel_disp6,&channel_disp7},
     settings_file{model},
-    setup_menu{screen_tc, screen_tc.get_clip_rect(), model, settings_file},
+    setup_menu{screen_tc, model, settings_file},
     seven_seg{tc_view_manager, screen_tc, false, false, setup_menu},
     sysex_idx{0}, waiting_for_eox{false},
-    state{Dev_descriptor},
+    state{Dev_descriptor} /*,
     core1_gpio{Core1_gpio::instance()},
-    prev_encoder_sw_pressed{false}
+    prev_encoder_sw_pressed{false}*/
 {
     gpio_init(LED_GPIO);
     gpio_set_dir(LED_GPIO, GPIO_OUT);
     Pico_pico_midi_lib::instance().init(nullptr, static_cmd_cb);
     // create the settings encoder debounced GPIO input objects
-    settings_enc_sw_idx = core1_gpio.add_input(SETTINGS_ENC_SW_GPIO, true);
-    settings_enc_a_idx = core1_gpio.add_input(SETTINGS_ENC_A_GPIO, true);
-    settings_enc_b_idx = core1_gpio.add_input(SETTINGS_ENC_B_GPIO, true);
+    //settings_enc_sw_idx = core1_gpio.add_input(SETTINGS_ENC_SW_GPIO, true);
+    //settings_enc_a_idx = core1_gpio.add_input(SETTINGS_ENC_A_GPIO, true);
+    //settings_enc_b_idx = core1_gpio.add_input(SETTINGS_ENC_B_GPIO, true);
     // create the settings encoder position decoder object
-    settings_enc_idx = core1_gpio.add_encoder(settings_enc_a_idx, settings_enc_b_idx);
+    //settings_enc_idx = core1_gpio.add_encoder(settings_enc_a_idx, settings_enc_b_idx);
     // reserve the space for the debounced GPIO status
-    settings_enc_status.resize(core1_gpio.get_status_size());
+    //settings_enc_status.resize(core1_gpio.get_status_size());
     // start debouncing GPIO on core 1
-    core1_gpio.start_core1_gpio();
+    //core1_gpio.start_core1_gpio();
     render_done_mask = 0;
-    int num_displays = sizeof(screen)/sizeof(screen[0]);
-    uint16_t target_done_mask = (1<<(num_displays+1)) -1;
+
+    uint16_t target_done_mask = ((1<<(num_chan_displays)) -1) |(1<<8);
     bool success = true;
-    for (int idx=0; success && idx < sizeof(screen)/sizeof(screen[0]); idx++) {
+    for (size_t idx=0; success && idx < num_chan_displays; idx++) {
         screen[idx]->render_non_blocking(callback, idx);
     }
     tc_view_manager.push_view(&seven_seg);
     screen_tc.render_non_blocking(callback, 8);
     while (success && render_done_mask != target_done_mask) {
-        for (int idx=0; success && idx < num_displays; idx++) {
+        for (size_t idx=0; success && idx < num_chan_displays; idx++) {
             success = screen[idx]->task();
         }
         if (success)
@@ -297,7 +298,7 @@ rppicomidi::Pico_mc_display_bridge_dev::Pico_mc_display_bridge_dev()  : addr{OLE
     assert(success);
 
     // start the reporting of the settings encoder sw and settings encoder positions
-    assert(core1_gpio.request_status_update());
+    //assert(core1_gpio.request_status_update());
 }
 
 void rppicomidi::Pico_mc_display_bridge_dev::static_cmd_cb(uint8_t header, uint8_t* payload_, uint16_t length_)
@@ -438,7 +439,7 @@ void rppicomidi::Pico_mc_display_bridge_dev::midi_cb(uint8_t *rx, uint8_t buflen
         uint8_t byte1;
         uint8_t byte2;
         uint8_t bytes_remaining;
-    } last_pitch_bend_message = {0,0,0};
+    } last_pitch_bend_message = {0,0,0,0};
     for (int idx=0; idx<buflen;idx++) {
         uint32_t nwritten = 0;
         uint32_t expected_nwritten = 1;
@@ -511,7 +512,7 @@ bool rppicomidi::Pico_mc_display_bridge_dev::handle_mc_device_inquiry()
         };
         uint32_t nwritten = tud_midi_stream_write(0, host_connection_query, sizeof(host_connection_query));
         if (nwritten != sizeof(host_connection_query)) {
-            TU_LOG1("Warning: Dropped %d bytes of host_connection_query message\r\n", sizeof(host_connection_query) - nwritten);
+            TU_LOG1("Warning: Dropped %lu bytes of host_connection_query message\r\n", sizeof(host_connection_query) - nwritten);
         }
         else {
             TU_LOG1("Sent Host Connection Query\r\n");
@@ -529,7 +530,7 @@ bool rppicomidi::Pico_mc_display_bridge_dev::handle_mc_device_inquiry()
         };
         uint32_t nwritten = tud_midi_stream_write(0, serial_number_response, sizeof(serial_number_response));
         if (nwritten != sizeof(serial_number_response)) {
-            TU_LOG1("Warning: Dropped %d bytes of serial_number_response message\r\n", sizeof(serial_number_response) - nwritten);
+            TU_LOG1("Warning: Dropped %lu bytes of serial_number_response message\r\n", sizeof(serial_number_response) - nwritten);
         }
         else {
             TU_LOG1("Sent Serial Number Response\r\n");
@@ -590,8 +591,8 @@ void rppicomidi::Pico_mc_display_bridge_dev::poll_usb_rx(bool connected)
         bool success = false;
         int jdx;
         int dropped_sysex = 0;
-        Mc_fader_sync::Sync_state fader_sync_state;
-        int fader;
+        //Mc_fader_sync::Sync_state fader_sync_state;
+        //int fader;
         uint8_t mc_in, mc_out;
         model.get_mc_cable(mc_in, mc_out);
         switch(rx[1]) {
@@ -599,7 +600,7 @@ void rppicomidi::Pico_mc_display_bridge_dev::poll_usb_rx(bool connected)
                 // Note message, channel 1
                 success = seven_seg.set_smpte_beats_by_mc_note(rx[2], rx[3]);
                 if (!success) {
-                    for (int chan = 0; !success && chan < 8; chan++) {
+                    for (int chan = 0; !success && chan < num_chan_displays; chan++) {
                         success = channel_disp[chan]->push_midi_message(rx+1, nread);
                     }
                 }
@@ -625,7 +626,7 @@ void rppicomidi::Pico_mc_display_bridge_dev::poll_usb_rx(bool connected)
                     push_to_midi_uart(rx+1, nread,cable_num);
                 }
                 if (!success) {
-                    for (int chan = 0; !success && chan < 8; chan++) {
+                    for (int chan = 0; !success && chan < num_chan_displays; chan++) {
                         success = channel_disp[chan]->push_midi_message(rx +1, 3);
                     }
                 }
@@ -642,7 +643,7 @@ void rppicomidi::Pico_mc_display_bridge_dev::poll_usb_rx(bool connected)
                 // filter this out
                 break;
             case 0xD0:  // Channel pressure (meter message)
-                for (int chan = 0; !success && chan < 8; chan++) {
+                for (int chan = 0; !success && chan < num_chan_displays; chan++) {
                     success = channel_disp[chan]->push_midi_message(rx +1, 2);
                 }
                 // filter these meter messages out
@@ -671,22 +672,24 @@ void rppicomidi::Pico_mc_display_bridge_dev::poll_usb_rx(bool connected)
                         TU_LOG1("Warning dropped %d sysex bytes\r\n", dropped_sysex);
                     }
                     if (!handle_mc_device_inquiry()) {
+                        #if 1
                         if (!seven_seg.set_digits_by_mc_sysex(sysex_message, sysex_idx+1)) {
                             int nsuccessful = 0;
                             // have to try every channel strip
-                            for (int chan = 0; chan < 8; chan++) {
+                            for (int chan = 0; chan < num_chan_displays; chan++) {
                                 if (channel_disp[chan]->push_midi_message(sysex_message, sysex_idx+1)) {
                                     ++nsuccessful;
                                 }
                             }
                             success = nsuccessful != 0;
                         }
+                        #endif
                         if (!success) {
                             // send it on over the MIDI UART
                             push_to_midi_uart(sysex_message, sysex_idx+1,cable_num);
 
                             printf("unhandled:\r\n");
-                            for (int kdx=0; kdx<=sysex_idx;kdx++) {
+                            for (size_t kdx=0; kdx<=sysex_idx;kdx++) {
                                 printf("%02x ", sysex_message[kdx]);
                             }
                             printf("\n\r");
@@ -709,7 +712,7 @@ void rppicomidi::Pico_mc_display_bridge_dev::poll_usb_rx(bool connected)
                         if (!seven_seg.set_digits_by_mc_sysex(sysex_message, sysex_idx+1)) {
                             // have to try every channel strip
                             int nsuccessful = 0;
-                            for (int chan = 0; chan < 8; chan++) {
+                            for (int chan = 0; chan < num_chan_displays; chan++) {
                                 if (channel_disp[chan]->push_midi_message(sysex_message, sysex_idx+1)) {
                                     ++nsuccessful;
                                 }
@@ -739,10 +742,10 @@ void rppicomidi::Pico_mc_display_bridge_dev::poll_usb_rx(bool connected)
             case 0xE6:
             case 0xE7:
             case 0xE8:
-                fader = rx[1] &0xf;
-                fader_sync_state = fader_sync[fader].update_target_position(rx[2], rx[3]);
-                TU_LOG2("From DAW: Fader %u sync state:=%s target=%d fader =%d\r\n",fader, fader_sync[fader].get_state_string(fader_sync_state),
-                    fader_sync[fader].get_target_position(), fader_sync[fader].get_fader_position());
+                //fader = rx[1] &0xf;
+                //fader_sync_state = fader_sync[fader].update_target_position(rx[2], rx[3]);
+                //TU_LOG2("From DAW: Fader %u sync state:=%s target=%d fader =%d\r\n",fader, fader_sync[fader].get_state_string(fader_sync_state),
+                //    fader_sync[fader].get_target_position(), fader_sync[fader].get_fader_position());
                 // filter out
                 break;
             default:
@@ -765,20 +768,22 @@ void rppicomidi::Pico_mc_display_bridge_dev::poll_usb_rx(bool connected)
                             sysex_message[++sysex_idx] = rx[1];
                             waiting_for_eox = false;
                             if (!handle_mc_device_inquiry()) {
+                                #if 1
                                 if (!seven_seg.set_digits_by_mc_sysex(sysex_message, sysex_idx+1)) {
                                     // have to try every channel strip
                                     int nsuccessful = 0;
-                                    for (int chan = 0; chan < 8; chan++) {
+                                    for (int chan = 0; chan < num_chan_displays; chan++) {
                                         if (channel_disp[chan]->push_midi_message(sysex_message, sysex_idx+1)) {
                                             ++nsuccessful;
                                         }
                                     }
                                     success = nsuccessful != 0;
                                 }
+                                #endif
                                 if (!success) {
                                     push_to_midi_uart(sysex_message, sysex_idx+1, cable_num); // send it on to the MIDI UART
                                     printf("unhandled:\r\n");
-                                    for (int kdx=0; kdx<=sysex_idx;kdx++) {
+                                    for (size_t kdx=0; kdx<=sysex_idx;kdx++) {
                                         printf("%02x ",sysex_message[kdx]);
                                     }
                                     printf("\n\r");
@@ -814,11 +819,10 @@ void rppicomidi::Pico_mc_display_bridge_dev::task()
     // Drain any transmissions that result
     Pico_pico_midi_lib::instance().drain_tx_buffer();
 
-    if (core1_gpio.get_status_update(settings_enc_status)) {
 #if 0
+    if (core1_gpio.get_status_update(settings_enc_status)) {
         printf("Encoder delta=%d switch is%s on\r\n", settings_enc_status.at(settings_enc_idx+1),
             (settings_enc_status.at(0) & (1 << settings_enc_sw_idx))?"":" not");
-#endif
         int32_t delta = settings_enc_status.at(settings_enc_idx+1);
         if (delta < 0)
             tc_view_manager.on_decrement((uint32_t)(-delta));
@@ -832,18 +836,21 @@ void rppicomidi::Pico_mc_display_bridge_dev::task()
         }
         assert(core1_gpio.request_status_update());
     }
+#endif
     // Update the screens if need be
-    for (int chan = 0; chan < 8; chan++) {
+    for (int chan = 0; chan < num_chan_displays; chan++) {
         channel_disp[chan]->task();
         if (screen[chan]->can_render()) {
             screen[chan]->render_non_blocking(nullptr, chan);
         }
         screen[chan]->task();
     }
+    #if 1
     if (screen_tc.can_render()) {
         screen_tc.render_non_blocking(nullptr, 0);
     }
     screen_tc.task();
+    #endif
 
 }
 void rppicomidi::Pico_mc_display_bridge_dev::poll_midi_uart_rx(bool connected)
