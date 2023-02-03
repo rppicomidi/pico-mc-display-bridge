@@ -93,6 +93,7 @@
 #define CFG_TUH_HID_EPIN_BUFSIZE    64
 #define CFG_TUH_HID_EPOUT_BUFSIZE   64
 
+#define CFG_MIDI_HOST_DEVSTRINGS 1
 #ifdef __cplusplus
  }
 #endif

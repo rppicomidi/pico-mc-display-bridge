@@ -87,11 +87,12 @@ public:
 
     uint8_t midi_dev_addr;
 
-    static const uint8_t max_string_indices = 32;
+    static const uint8_t max_string_indices = 255;
     uint8_t all_string_indices[max_string_indices];
     uint8_t num_strings;
     uint8_t dev_desc_cache[18]; // a memory image of the device descriptor
     uint8_t config_desc_cache[512]; // a memory image of the device configuration descriptor
+    uint16_t string_xfer_buffer[128];
     enum {Disconnected, Device_setup, Operating} state;
     // Make the command definitions class variables
     #include "../common/pico-mc-display-bridge-cmds.h"
@@ -107,15 +108,14 @@ void rppicomidi::Pico_mc_display_bridge_host::midi_cb(uint8_t *buffer, uint8_t b
     {
         uint32_t nwritten = tuh_midi_stream_write(instance().midi_dev_addr, cable_num,buffer, buflen);
         if (nwritten != buflen) {
-            TU_LOG1("Warning: Dropped %d bytes receiving from UART MIDI In\r\n", buflen - nwritten);
+            TU_LOG1("Warning: Dropped %lu bytes receiving from UART MIDI In\r\n", buflen - nwritten);
         }
     }
 }
 
-void rppicomidi::Pico_mc_display_bridge_host::cmd_cb(uint8_t header, uint8_t* payload_, uint16_t length_)
+void rppicomidi::Pico_mc_display_bridge_host::cmd_cb(uint8_t header, uint8_t* payload_, uint16_t)
 {
-    uint8_t payload[256];
-    uint8_t length;
+    uint8_t length = 0;
     uint8_t dev_addr = instance().midi_dev_addr;
     if (!tuh_mounted(dev_addr) || (instance().state != Operating && instance().state != Device_setup))
         return;
@@ -166,20 +166,51 @@ void rppicomidi::Pico_mc_display_bridge_host::cmd_cb(uint8_t header, uint8_t* pa
         case REQUEST_DEV_LANGIDS:
             // get the langID list from the device
             // The callback will send it back to Device Pico
-            assert(usbh_request_langids(dev_addr));
+            if (0 == tuh_descriptor_get_string_sync(dev_addr, 0, 0, instance().string_xfer_buffer, sizeof(string_xfer_buffer))) {
+                uint16_t* langids = instance().string_xfer_buffer+1;
+                uint8_t num_langid_bytes = ((instance().string_xfer_buffer[0] & 0xf) - 2);
+                if (num_langid_bytes > 1) {
+                    printf("langid=0x%04x\r\n",langids[0]);
+                    rppicomidi::Pico_pico_midi_lib::Pico_pico_midi_lib::instance().write_cmd_to_tx_buffer(RETURN_DEV_LANGIDS,
+                        (uint8_t*)langids, num_langid_bytes);
+                }
+            }
+            //assert(usbh_request_langids(dev_addr));
             break;
         case REQUEST_DEV_STRING_IDXS:
-            instance().num_strings = tuh_midi_get_all_istrings(dev_addr, instance().all_string_indices, sizeof(all_string_indices));
-            length = instance().num_strings <= 255 ? instance().num_strings : 255;
+        {
+            const uint8_t* indices;
+            // first get all string indices from the device descriptor
+            auto desc = reinterpret_cast<tusb_desc_device_t*>(instance().dev_desc_cache);
+            uint8_t first_midi_string_idx=0;
+            if (desc->iManufacturer) {
+                instance().all_string_indices[first_midi_string_idx++] = desc->iManufacturer;
+            }
+            if (desc->iProduct) {
+                instance().all_string_indices[first_midi_string_idx++] = desc->iProduct;
+            }
+            if (desc->iSerialNumber) {
+                instance().all_string_indices[first_midi_string_idx++] = desc->iSerialNumber;
+            }
+            instance().num_strings = tuh_midi_get_all_istrings(dev_addr, &indices);
+            length = instance().num_strings <= max_string_indices ? instance().num_strings : max_string_indices;
+            for (uint8_t idx=0; idx < length; idx++) {
+                instance().all_string_indices[idx+first_midi_string_idx] = indices[idx];
+            }
             rppicomidi::Pico_pico_midi_lib::instance().write_cmd_to_tx_buffer(RETURN_DEV_STRING_IDXS, 
                 instance().all_string_indices, length);
+        }
             break;
         case REQUEST_DEV_STRING:
         {
             // TODO: move this to string callback
             uint8_t istring = payload_[0];
             uint16_t langid = payload_[1] | (payload_[2] << 8);
-            assert(usbh_request_device_string(dev_addr, istring, langid));
+            if (0 == tuh_descriptor_get_string_sync(dev_addr, istring, langid, instance().string_xfer_buffer, sizeof(string_xfer_buffer))) {
+                uint16_t* strbuf = instance().string_xfer_buffer+1;
+                uint8_t num_utf16le = ((instance().string_xfer_buffer[0] & 0xff) - 2)/2;
+                instance().usbh_dev_string_cb(dev_addr, istring, langid, num_utf16le, strbuf);
+            }
         }
             break;
         case RESYNCHRONIZE:
@@ -352,38 +383,28 @@ void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
             uint32_t bytes_read = tuh_midi_stream_read(dev_addr, &cable_num, buffer, sizeof(buffer));
             uint8_t npushed = rppicomidi::Pico_pico_midi_lib::instance().write_midi_to_tx_buffer(buffer, bytes_read, cable_num); //rppicomidi::Pico_pico_midi_lib::instance().write_tx_buffer(buffer,bytes_read);
             if (npushed != bytes_read) {
-                TU_LOG1("Warning: Dropped %d bytes sending to UART MIDI Out\r\n", bytes_read - npushed);
+                TU_LOG1("Warning: Dropped %lu bytes sending to UART MIDI Out\r\n", bytes_read - npushed);
             }
         }
     }
 }
 
-void tuh_midi_tx_cb(uint8_t dev_addr)
+void tuh_midi_tx_cb(uint8_t)
 {
 
 }
 
-void usbh_langids_cb(uint8_t dev_addr, uint8_t _num_langids, uint16_t* _langids)
+void tuh_desc_device_cb(uint8_t dev_addr, tusb_desc_device_t const *desc_device_)
 {
-    rppicomidi::Pico_mc_display_bridge_host::instance().usbh_langids_cb(dev_addr, _num_langids, _langids);
-}
-
-void usbh_dev_string_cb(uint8_t dev_addr, uint8_t istring, uint16_t langid, uint8_t num_utf16le, uint16_t* utf16le)
-{
-    rppicomidi::Pico_mc_display_bridge_host::instance().usbh_dev_string_cb(dev_addr, istring, langid, num_utf16le, utf16le);
-}
-
-
-void tuh_attach_cb (tusb_desc_device_t const *desc_device_)
-{
+    (void)dev_addr;
     printf("Got device descriptor %u bytes\r\n", desc_device_->bLength);
     assert(desc_device_->bLength == sizeof(rppicomidi::Pico_mc_display_bridge_host::instance().dev_desc_cache));
     memcpy(rppicomidi::Pico_mc_display_bridge_host::instance().dev_desc_cache, (uint8_t*)desc_device_, desc_device_->bLength);
 }
 
-void tuh_configuration_parsed_cb(uint8_t dev_addr, const tusb_desc_configuration_t* raw_config_desc)
+void tuh_desc_config_cb(uint8_t dev_addr, const tusb_desc_configuration_t* raw_config_desc)
 {
-    printf("Got configuration descriptor %u bytes\n\r", raw_config_desc->wTotalLength);
+    printf("Got configuration descriptor %u bytes from device %u\n\r", raw_config_desc->wTotalLength, dev_addr);
     assert(raw_config_desc->wTotalLength <= sizeof(rppicomidi::Pico_mc_display_bridge_host::instance().config_desc_cache));
     memcpy(rppicomidi::Pico_mc_display_bridge_host::instance().config_desc_cache, (uint8_t*)raw_config_desc, raw_config_desc->wTotalLength);
 }

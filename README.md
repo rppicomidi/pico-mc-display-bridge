@@ -34,9 +34,32 @@ pico-mc-display-bridge/
 The `device` directory contains the source code for the Device Pico and the `host` directory contains the source code for the Host Pico. You must build one image for each Pico, and program each Pico with the appropriate image.
 
 ## Get the Source Code
-`cd [the root directory where you want to put this project]`
-`git clone --recurse-submodules https://github.com/rppicomidi/pico-mc-display-bridge.git`
-`cd pico-mc-display-bridge`
+
+```
+cd [the root directory where you want to put this project]
+git clone --recurse-submodules https://github.com/rppicomidi/pico-mc-display-bridge.git
+cd pico-mc-display-bridge
+```
+
+# Make sure you have the latest Pico C SDK
+cd pico-sdk
+git pull
+
+# Get my fork of the tinyusb library with MIDI Host and device descriptor cloning support
+
+```
+cd lib/tinyusb
+git remote add upstream https://github.com/hathach/tinyusb.git
+git remote set-url origin https://github.com/rppicomidi/tinyusb.git
+git fetch origin
+git checkout -b pio-midihost origin/pio-midihost
+```
+# get the Pico-PIO-USB submodule into the source tree
+
+```
+cd hw/mcu/raspberry_pi
+git submodule update --init Pico-PIO-USB
+```
 
 ## Build the Device Pico Image
 Assumes you just completed the "Get the Source Code" steps above. Also assumes you have correctly set up your command line build environment per the instructions in the _Getting started with Raspberry Pi Pico_ guide.
