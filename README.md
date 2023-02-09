@@ -2,22 +2,30 @@
 
 Most Digital Audio Workstation (DAW) programs and many live audio products support Mackie Control (MC) protocol for controlling levels, transport controls, channel muting, etc. There are quite a few low-cost control surfaces on the market, but many lack features that more expensive controllers such as the Mackie MCU Pro or Behringer X-Touch support.
 
-This project uses two Raspberry Pi Pico boards to implement a channel strip, meter, and time display for USB MIDI control surfaces that support Mackie Control (MC) protocol but do not have displays. You insert the pico-mc-bridge in line with the USB connection from the DAW to the control surface. One Pico board acts as a USB Device and connects to the DAW or other device that expects to talk with a MC control surface. The other Pico board acts as a USB host and connects to the MC compatible control surface.
+This project uses two Raspberry Pi Pico boards to implement a channel strip, meter, and time display for USB MIDI control surfaces that support Mackie Control (MC) protocol but do not have displays. You insert the pico-mc-bridge in line with the USB connection from the DAW to the control surface. One Pico board acts as a USB Device and connects to the DAW or other device that expects to talk with a MC control surface. The other Pico board acts as a USB host and connects to the MC compatible control surface, and it acts as a button interface for the additional buttons provided.
 
 The two Pico boards together form what should be a transparent interface between the control surface and the DAW. The Host Pico reads the control surface USB device information and sends it to the Device Pico before the Device Pico initializes its USB stack. When the DAW computer asks the Device Pico for its device information, it sends the information of the connected control surface instead.
 
-The pico-mc-display-bridge supports features in groups that can be added or omitted using a configuration menu. Features are:
+The pico-mc-display-bridge supports:
 
-- one 128x64 OLED per channel strip that you can configured to show
+- one 128x64 OLED per channel strip that shows
 	- 2 lines of 7 characters of text
 	- a representation of the MC VPot LEDs,
 	- a representation of the MC meter LEDs, 
 	- a representation of the REC, MUTE, SOLO and SEL button LEDs.
-- one 128x64 OLED for time display (either Bars/Beats/Subdivisions/ticks or SMPTE timecode), VPot mode display (a two-digit 7-segment display on the Mackie MCU Pro, for example)
+- one 128x64 OLED for time display (either Bars/Beats/Subdivisions/ticks or SMPTE timecode), VPot mode display (a two-digit 7-segment display on the Mackie MCU Pro, for example). This display is shared with the MIDI Processor UI (see below)
+- one button per channel strip that can function as either Select, Mute, Solo, Record
+or VPot press depending on whether any of mode buttons is pressed.
 - one button for choosing name or value display
-- 8 buttons for VPot press functions (for controllers with knobs but no VPot press)
-- fader soft pickup: DAWs expect a MC control surface to have motorized faders. Whenever the DAW sends a fader level to the control surface, the fader moves to that fader position. Low cost control surfaces do not have motorized faders. When you move a fader on the control surface, the fader on the DAW screen will jump to match the level of the control surface fader. This can be very bad, especially if you are bank switching, using the faders to control bus sends, etc. Soft pickup prevents fader jumps. If the fader is not synchronized to the DAW, then the fader has to move past the DAW's expected fader level before the fader will send new levels to the DAW. The OLED for the channel strip of the fader will tell you what direction to move the fader to force soft pickup. For the output fader, the soft pickup direction is shown on the timecode/VPot mode display.
 - one button for choosing the time display mode (Bars/Beats/Subdivisions/Ticks or SMPTE Timecode).
+- 7 buttons (or a 5-way navigation switch plus 2 buttons) for navigating the MIDI
+processor UI
+- a MIDI processor unit that determines which virtual MIDI cable in
+the MIDI USB stream is carrying MC data, and that implements useful features
+such as fader soft pickup to prevent value jumps when you move faders, button remap,
+etc. The MIDI processor settings are stored in the Device Pico's program flash memory.
+Each MC device type (unique USB VID and PID) can have up to 8 preset settings that you
+can recall using the MIDI Processor UI.
 
 # Source Organization and Build Instructions
 ## Source Organization

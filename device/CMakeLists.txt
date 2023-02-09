@@ -9,25 +9,20 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DPICO_USE_MALLOC_MUTEX=1")
-#add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../ext_lib/littlefs-lib ext_lib/littlefs-lib)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../lib/pico_pico_midi_lib lib/pico_pico_midi_lib)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../lib/pico-ssd1306-mono-graphics-lib lib/pico-ssd1306-mono-graphics-lib)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../lib/pico-mono-ui-lib lib/pico-mono-ui-lib)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../lib/midi-processor-lib lib/midi-processor-lib)
 
 add_executable(${target_name}
-#    mc_bridge_model.cpp
     mc_bridge_usb_dev.cpp
     mc_channel_strip_display.cpp
     mc_channel_text.cpp
     mc_fader_sync.cpp
     mc_meter.cpp
-#    mc_settings_file.cpp
-#    mc_bridge_model.cpp
     mc_seven_seg_display.cpp
     mc_vpot_display.cpp
     midi_processor_mc_display.cpp
-#    setup_menu.cpp
     usb_descriptors.c
     ${CMAKE_CURRENT_LIST_DIR}/../ext_lib/parson/parson.c
 )

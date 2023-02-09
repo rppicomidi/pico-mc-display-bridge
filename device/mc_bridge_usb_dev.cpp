@@ -287,7 +287,8 @@ rppicomidi::Pico_mc_display_bridge_dev::Pico_mc_display_bridge_dev()  : addr{OLE
             success = screen_tc.task();
     }
     assert(success);
-    Midi_processor_manager::instance(); // create the instance of the MIDI Processor Manager
+    // create the instance of the MIDI Processor Manager attach the screen
+    Midi_processor_manager::instance().set_screen(&screen_tc);
 
     // start the reporting of the settings encoder sw and settings encoder positions
     //assert(core1_gpio.request_status_update());
@@ -373,7 +374,7 @@ void rppicomidi::Pico_mc_display_bridge_dev::cmd_cb(uint8_t header, uint8_t* pay
                 rppicomidi::Pico_mc_display_bridge_dev::Usb_string_s usb_string;
                 usb_string.index = payload_[0];
                 usb_string.langid = (uint16_t)payload_[1] | ((uint16_t)payload_[2]<< 8);
-                usb_string.length = length_-3;
+                usb_string.length = (length_-3)/2;
                 usb_string.utf16le = new uint16_t[usb_string.length];
                 memcpy((uint8_t*)usb_string.utf16le, payload_+3, length_-3);
                 string_list.push_back(usb_string);
@@ -391,7 +392,8 @@ void rppicomidi::Pico_mc_display_bridge_dev::cmd_cb(uint8_t header, uint8_t* pay
                         Settings_file::instance().set_vid_pid(vid,pid);
                         char devstr[129];
                         get_product_string(get_product_string_index(), devstr);
-                        Midi_processor_manager::instance().set_connected_device(vid, pid, devstr, num_rx_cables, num_tx_cables) ;
+                        Midi_processor_manager::instance().set_connected_device(vid, pid, devstr, num_rx_cables, num_tx_cables);
+                        setup_menu.set_connected_device(devstr,num_rx_cables, num_tx_cables, false);
                         if (!Settings_file::instance().load()) {
                             Midi_processor_manager::instance().clear_all_processors();
                         }
@@ -412,7 +414,32 @@ void rppicomidi::Pico_mc_display_bridge_dev::cmd_cb(uint8_t header, uint8_t* pay
             break;
         case RETURN_NAV_BUTTON_STATE:
             if (length_ == 1) {
-                printf("button=0x%02x\r\n", payload_[0]);
+                bool is_shifted = payload_[0] & NAV_BUTTON_SHIFT;
+                switch(payload_[0] & NAV_BUTTON_DIR_MASK) {
+                    default:
+                        if (payload_[0] & NAV_BUTTON_SELECT) {
+                            tc_view_manager.on_select();
+                        }
+                        else if (payload_[0] & NAV_BUTTON_BACK) {
+                            if (is_shifted)
+                                tc_view_manager.go_home();
+                            else
+                                tc_view_manager.on_back();
+                        }
+                        break;
+                    case NAV_BUTTON_UP:
+                        tc_view_manager.on_increment(1, is_shifted);
+                        break;
+                    case NAV_BUTTON_DOWN:
+                        tc_view_manager.on_decrement(1, is_shifted);
+                        break;
+                    case NAV_BUTTON_LEFT:
+                        tc_view_manager.on_left(1, is_shifted);
+                        break;
+                    case NAV_BUTTON_RIGHT:
+                        tc_view_manager.on_right(1, is_shifted);
+                        break;
+                }
             }
             break;
     }
@@ -429,14 +456,14 @@ void rppicomidi::Pico_mc_display_bridge_dev::midi_cb(uint8_t *rx, uint8_t buflen
         if (rx_packet[cable_num].idx == 0) {
             // starting a new packet
             uint8_t const msg = ((*rx) >> 4) & 0xF;
-            bool sysex_in_progress = (msg < 0x8) && (rx_packet[cable_num].packet[0] & 0xF) == MIDI_CIN_SYSEX_START;
+            bool sysex_in_progress = (msg < MIDI_CIN_NOTE_OFF) && (rx_packet[cable_num].packet[0] & 0xF) == MIDI_CIN_SYSEX_START;
             rx_packet[cable_num].packet[0] = cable_num << 4;
             rx_packet[cable_num].packet[1] = *rx++;
             rx_packet[cable_num].idx = 2;
-            if (msg >= 0x8 && msg < 0xE) {
+            if (msg >= MIDI_CIN_NOTE_OFF && msg <= MIDI_CIN_PITCH_BEND_CHANGE) {
                 // channel message
                 rx_packet[cable_num].packet[0] |= msg;
-                if (msg == 0xD || msg == 0xE) {
+                if (msg == MIDI_CIN_CHANNEL_PRESSURE || msg == MIDI_CIN_PROGRAM_CHANGE) {
                     rx_packet[cable_num].size = 3;
                     rx_packet[cable_num].packet[3] = 0;
                 }
@@ -470,7 +497,7 @@ void rppicomidi::Pico_mc_display_bridge_dev::midi_cb(uint8_t *rx, uint8_t buflen
                 // bad MIDI data stream
                 rx_packet[cable_num].idx = 0;
                 rx_packet[cable_num].size = 0;
-                printf("dropped MIDI stream byte idx=0 cable %u data 0x%02x", cable_num, rx_packet[cable_num].packet[1]);
+                printf("dropped MIDI stream byte idx=0 cable %u data 0x%02x\r\n", cable_num, rx_packet[cable_num].packet[1]);
             }
         }
         else if (*rx == 0xF7) {
@@ -506,71 +533,6 @@ void rppicomidi::Pico_mc_display_bridge_dev::midi_cb(uint8_t *rx, uint8_t buflen
             }
         }
     }
-#if 0
-    if (buflen >0 && buflen <= 3) {
-        uint8_t packet[4] = {0,0,0,0};
-        packet[0] = cable_num << 4;
-        for (uint8_t idx = 1; idx <= buflen; idx++) {
-            packet[idx] = *rx++;
-        }
-        if (Midi_processor_manager::instance().filter_midi_in(cable_num, packet)) {
-            tud_midi_stream_write(cable_num, packet, buflen);
-        }
-    }
-#endif
-    #if 0
-    static struct {
-        uint8_t fader;
-        uint8_t byte1;
-        uint8_t byte2;
-        uint8_t bytes_remaining;
-    } last_pitch_bend_message = {0,0,0,0};
-    for (int idx=0; idx<buflen;idx++) {
-        uint32_t nwritten = 0;
-        uint32_t expected_nwritten = 1;
-        if ((rx[idx] & 0xF0) == 0xE0 && (rx[idx]&0xF) < 9) {
-            // pitch bend message == Mackie Control fader message
-            last_pitch_bend_message.fader = rx[idx]&0xF;
-            last_pitch_bend_message.bytes_remaining = 2;
-            expected_nwritten = 0;
-        }
-        else if (last_pitch_bend_message.bytes_remaining == 2) {
-            // TODO handle error condition
-            last_pitch_bend_message.byte1 = rx[idx];
-            last_pitch_bend_message.bytes_remaining = 1;
-            expected_nwritten = 0;
-        }
-        else if (last_pitch_bend_message.bytes_remaining == 1) {
-            // TODO handle error condition
-            // Got the whole pitch bend message
-            last_pitch_bend_message.byte2 = rx[idx];
-            last_pitch_bend_message.bytes_remaining = 0;
-            Mc_fader_sync::Sync_state state =
-                Pico_mc_display_bridge_dev::instance().fader_sync[last_pitch_bend_message.fader].
-                        update_fader_position(last_pitch_bend_message.byte1, last_pitch_bend_message.byte2);
-            if (true /* state == Mc_fader_sync::Synchronized */) {
-                expected_nwritten = 3;
-                uint8_t message[3] = {0xe0, last_pitch_bend_message.byte1, last_pitch_bend_message.byte2};
-                message[0] |= last_pitch_bend_message.fader;
-                nwritten = tud_midi_stream_write(cable_num, message, expected_nwritten);
-            }
-            else {
-                // TODO show synchronization GUI
-                expected_nwritten = 0;
-            }
-            TU_LOG2("Sync state fader %d=%s: target=%d fader=%d\r\n",
-                last_pitch_bend_message.fader, fader_sync[last_pitch_bend_message.fader].get_state_string(state),
-                fader_sync[last_pitch_bend_message.fader].get_target_position(),
-                fader_sync[last_pitch_bend_message.fader].get_fader_position());
-        }
-        else {
-            nwritten = tud_midi_stream_write(cable_num, rx+idx, expected_nwritten);
-        }
-        if (nwritten != expected_nwritten) {
-            TU_LOG2("Warning: Dropped %d bytes receiving from UART MIDI In\r\n", expected_nwritten - nwritten);
-        }
-    }
-    #endif
 }
 
 void rppicomidi::Pico_mc_display_bridge_dev::push_to_midi_uart(uint8_t* bytes, int nbytes, uint8_t cable_num)

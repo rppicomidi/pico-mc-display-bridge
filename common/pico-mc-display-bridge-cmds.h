@@ -43,6 +43,7 @@ static const uint8_t NAV_BUTTON_UP=0x01;
 static const uint8_t NAV_BUTTON_DOWN=0x02;
 static const uint8_t NAV_BUTTON_LEFT=0x04;
 static const uint8_t NAV_BUTTON_RIGHT=0x08;
+static const uint8_t NAV_BUTTON_DIR_MASK=(NAV_BUTTON_UP|NAV_BUTTON_DOWN|NAV_BUTTON_LEFT|NAV_BUTTON_RIGHT);
 static const uint8_t NAV_BUTTON_SELECT=0x10;
 static const uint8_t NAV_BUTTON_BACK=0x20;
 static const uint8_t NAV_BUTTON_SHIFT=0x40;

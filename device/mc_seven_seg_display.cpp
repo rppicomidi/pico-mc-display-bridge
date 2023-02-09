@@ -66,11 +66,11 @@ void rppicomidi::Mc_seven_seg_display::draw()
     }
 }
 
-rppicomidi::Mc_seven_seg_display::Select_result rppicomidi::Mc_seven_seg_display::on_select(View**)
+rppicomidi::Mc_seven_seg_display::Select_result rppicomidi::Mc_seven_seg_display::on_select(View** view_)
 {
     printf("setup menu requested\r\n");
-    view_manager.push_view(&setup_menu);
-    return new_view; // the top of the view stack should remain unchanged
+    *view_ = &setup_menu;
+    return new_view; // The new view is the setup menu
 }
 
 void rppicomidi::Mc_seven_seg_display::set_seven_seg_digit(uint8_t digit_, const char symbol_)
