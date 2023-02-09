@@ -16,3 +16,12 @@
 [submodule "ext_lib/parson"]
 	path = ext_lib/parson
 	url = https://github.com/kgabis/parson.git
+[submodule "lib/midi-processor-lib"]
+	path = lib/midi-processor-lib
+	url = https://github.com/rppicomidi/midi-processor-lib.git
+[submodule "lib/midi-processor-settings-view-lib"]
+	path = lib/midi-processor-settings-view-lib
+	url = https://github.com/rppicomidi/midi-processor-settings-view-lib.git
+[submodule "ext_lib/embedded-cli"]
+	path = ext_lib/embedded-cli
+	url = https://github.com/funbiscuit/embedded-cli.git

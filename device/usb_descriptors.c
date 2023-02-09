@@ -165,6 +165,10 @@ uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
 #endif
 }
 
+uint8_t get_product_string_index()
+{
+    return desc_device.iProduct;
+}
 //--------------------------------------------------------------------+
 // String Descriptors
 //--------------------------------------------------------------------+

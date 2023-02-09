@@ -83,6 +83,13 @@ uint16_t get_midi_configuration_length();
  * @note values can be 0
  */
 void get_num_cables(uint8_t* num_rx_cables, uint8_t* num_tx_cables);
+
+/**
+ * @brief Get the product string index
+ * 
+ * @return 0 if no product string, or the product string index if there is one
+ */
+uint8_t get_product_string_index();
 #ifdef __cplusplus
 }
 #endif

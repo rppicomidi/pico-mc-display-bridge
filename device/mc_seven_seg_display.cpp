@@ -30,7 +30,7 @@
 #include <cstdio>
 #include "mc_seven_seg_display.h"
 
-rppicomidi::Mc_seven_seg_display::Mc_seven_seg_display(View_manager& view_manager_, Mono_graphics& screen_, bool smpte_led_, bool beats_led_, Setup_menu& setup_menu_) :
+rppicomidi::Mc_seven_seg_display::Mc_seven_seg_display(View_manager& view_manager_, Mono_graphics& screen_, bool smpte_led_, bool beats_led_, View& setup_menu_) :
     View{screen_, screen_.get_clip_rect()},
     view_manager{view_manager_}, seven_seg_font{screen.get_font_24()}, label_font{screen.get_font_8()},
     smpte_led{smpte_led_}, beats_led{beats_led_},

@@ -36,6 +36,7 @@
 #include "bsp/board.h"
 #include "tusb.h"
 #include "class/midi/midi_host.h"
+#include "nav_buttons.h"
 
 namespace rppicomidi
 {
@@ -94,6 +95,7 @@ public:
     uint8_t config_desc_cache[512]; // a memory image of the device configuration descriptor
     uint16_t string_xfer_buffer[128];
     enum {Disconnected, Device_setup, Operating} state;
+    Nav_buttons nav;
     // Make the command definitions class variables
     #include "../common/pico-mc-display-bridge-cmds.h"
 };
@@ -300,6 +302,11 @@ void rppicomidi::Pico_mc_display_bridge_host::task()
     else {
         state = Disconnected;
     }
+    uint8_t nav_state = nav.poll();
+    if (nav_state) {
+        nav_state &= 0x7f;
+        rppicomidi::Pico_pico_midi_lib::instance().write_cmd_to_tx_buffer(RETURN_NAV_BUTTON_STATE, &nav_state, 1);
+    }
 }
 
 void rppicomidi::Pico_mc_display_bridge_host::usbh_langids_cb(uint8_t dev_addr, uint8_t _num_langids, uint16_t* _langids)
@@ -332,8 +339,7 @@ int main() {
 
 void rppicomidi::Pico_mc_display_bridge_host::usbh_dev_string_cb(uint8_t dev_addr, uint8_t istring, uint16_t langid, uint8_t num_utf16le, uint16_t* utf16le)
 {
-    if (midi_dev_addr == dev_addr && num_utf16le != 0 && utf16le != NULL)
-    {
+    if (midi_dev_addr == dev_addr && num_utf16le != 0 && utf16le != NULL) {
         int test = num_utf16le*2 + 3;
         uint8_t length = 255;
         if (test < 256)

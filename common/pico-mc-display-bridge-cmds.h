@@ -29,20 +29,28 @@
 
 #pragma once
 
-    static const uint8_t REQUEST_DEV_DESC=0x40;
-    static const uint8_t RETURN_DEV_DESC=0x41;
-    static const uint8_t REQUEST_DEV_STRING_IDXS=0x42;
-    static const uint8_t RETURN_DEV_STRING_IDXS=0x43;
-    static const uint8_t REQUEST_DEV_LANGIDS=0x44;
-    static const uint8_t RETURN_DEV_LANGIDS=0x45;
-    static const uint8_t REQUEST_DEV_STRING=0x46;
-    static const uint8_t RETURN_DEV_STRING=0x47;
-    static const uint8_t RESYNCHRONIZE=0x48;
-    // The configuration descriptor may be too long to send back in one go
-    static const uint8_t REQUEST_CONF_DESC_0=0x49; // Request the first up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor
-    static const uint8_t RETURN_CONF_DESC_0=0x4A;  // Return the first up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor
-    static const uint8_t REQUEST_CONF_DESC_1=0x4B; // Request the second up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor
-    static const uint8_t RETURN_CONF_DESC_1=0x4C;  // Return the second up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor
-    static const uint8_t REQUEST_CONF_DESC_2=0x4D; // Request the third up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor
-    static const uint8_t RETURN_CONF_DESC_2=0x4E;  // Return the third up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor
-    static const uint8_t CONFIG_DESC_MAX_PAYLOAD=200; // The largest payload that will be returned in a RETURN_CONF_DESC_? message
+static const uint8_t REQUEST_DEV_DESC=0x40;
+static const uint8_t RETURN_DEV_DESC=0x41;
+static const uint8_t REQUEST_DEV_STRING_IDXS=0x42;
+static const uint8_t RETURN_DEV_STRING_IDXS=0x43;
+static const uint8_t REQUEST_DEV_LANGIDS=0x44;
+static const uint8_t RETURN_DEV_LANGIDS=0x45;
+static const uint8_t REQUEST_DEV_STRING=0x46;
+static const uint8_t RETURN_DEV_STRING=0x47;
+static const uint8_t RESYNCHRONIZE=0x48;
+static const uint8_t RETURN_NAV_BUTTON_STATE=0x50; // Return the Navigation button status byte on change
+static const uint8_t NAV_BUTTON_UP=0x01;
+static const uint8_t NAV_BUTTON_DOWN=0x02;
+static const uint8_t NAV_BUTTON_LEFT=0x04;
+static const uint8_t NAV_BUTTON_RIGHT=0x08;
+static const uint8_t NAV_BUTTON_SELECT=0x10;
+static const uint8_t NAV_BUTTON_BACK=0x20;
+static const uint8_t NAV_BUTTON_SHIFT=0x40;
+// The configuration descriptor may be too long to send back in one go
+static const uint8_t REQUEST_CONF_DESC_0=0x49; // Request the first up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor
+static const uint8_t RETURN_CONF_DESC_0=0x4A;  // Return the first up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor
+static const uint8_t REQUEST_CONF_DESC_1=0x4B; // Request the second up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor
+static const uint8_t RETURN_CONF_DESC_1=0x4C;  // Return the second up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor
+static const uint8_t REQUEST_CONF_DESC_2=0x4D; // Request the third up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor
+static const uint8_t RETURN_CONF_DESC_2=0x4E;  // Return the third up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor
+static const uint8_t CONFIG_DESC_MAX_PAYLOAD=200; // The largest payload that will be returned in a RETURN_CONF_DESC_? message

@@ -29,7 +29,6 @@
 #pragma once
 #include "mono_graphics_lib.h"
 #include "view_manager.h"
-#include "setup_menu.h"
 namespace rppicomidi {
 class Mc_seven_seg_display : public View
 {
@@ -42,7 +41,7 @@ public:
      * @param y_ 
      * @param channel_ 
      */
-    Mc_seven_seg_display(View_manager& view_manager_, Mono_graphics& screen_, bool smpte_led_, bool beats_led_, Setup_menu& setup_menu_);
+    Mc_seven_seg_display(View_manager& view_manager_, Mono_graphics& screen_, bool smpte_led_, bool beats_led_, View& setup_menu_);
 
     virtual ~Mc_seven_seg_display()=default;
 
@@ -113,6 +112,6 @@ private:
     const uint8_t nticks_digits;
     const uint8_t nmode_digits;
     char digits[12];
-    Setup_menu& setup_menu;
+    View& setup_menu;
 };
 }

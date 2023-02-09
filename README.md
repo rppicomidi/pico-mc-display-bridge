@@ -230,13 +230,29 @@ The Device Pico sends this message to the Host Pico to request a particular stri
 ```
 The Host Pico sends this message to the Device Pico in response to a Request String message.
 
+## Return Navigation Buttons Status Byte
+```
+50 Nav_button_status_byte checksum
+```
+The host sends to the device the status of the navigation buttons; bit set is pressed.
+
+| Bit | Description |
+| --- | ----------- |
+|  0  | UP          |
+|  1  | DOWN        |
+|  2  | LEFT        |
+|  3  | RIGHT       |
+|  4  | SELECT      |
+|  5  | BACK        |
+|  6  | SHIFT       |
+
 # References
 The [This site](https://sites.google.com/view/mackiecontroluniversaldiyguide/home) 
 documents the way MC uses MIDI. The Logic Control guide documents most of what you need. MC protocol uses 0x14 instead of 0x10 and 0x15 instead of 0x11 for the product IDs. There are some messages that are not documented here. I found some of these out by web search engine in forums, a look at the [Cakewalk Control Surface SDK](https://github.com/Cakewalk/Cakewalk-Control-Surface-SDK), and when all else failed, by using my DAW and [MidiView](https://hautetechnique.com/midi/midiview/).
 
 # I/O Pin Usage
 ## USB Device Pico
-The USB is configured in USB Device mode. This Pico controls 9 SSD1306-base 128x64 OLED modules over I2C. Some OLED modules have solder jumpers that allow selection of address 0x3C or 0x3D, but not all do. There is one OLED module per channel strip. The graphics driver code for this project allows you to update all 9 displays in parallel using 9 I2C ports from 2 PIO modules plus I2C1. The USB Device Pico communicates with the USB Host Pico via UART1. UART0 is used for debug console.
+The USB is configured in USB Device mode. This Pico controls 9 SSD1306-base 128x64 OLED modules over I2C. Some OLED modules have solder jumpers that allow selection of address 0x3C or 0x3D, but not all do. There is one OLED module per channel strip. The graphics driver code for this project allows you to update all 9 displays in parallel using 8 I2C ports from 2 PIO modules plus I2C1. The USB Device Pico communicates with the USB Host Pico via UART1. UART0 is used for debug console.
 
 - UART0 on pins GP0 and GP1 is used with the picoprobe for debug console
 - I2C1 on pins GP2 and GP3 is wired to the timecode OLED
