@@ -22,7 +22,7 @@ add_executable(${target_name}
     mc_meter.cpp
     mc_seven_seg_display.cpp
     mc_vpot_display.cpp
-    midi_processor_mc_display.cpp
+    midi_processor_mc_display_core.cpp
     usb_descriptors.c
     ${CMAKE_CURRENT_LIST_DIR}/../ext_lib/parson/parson.c
 )

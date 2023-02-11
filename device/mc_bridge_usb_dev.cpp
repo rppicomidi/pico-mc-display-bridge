@@ -39,7 +39,6 @@
 #include "ssd1306.h"
 #include "mc_channel_strip_display.h"
 #include "mc_seven_seg_display.h"
-//#include "mc_fader_sync.h"
 #include "pico/binary_info.h"
 #include "pico_pico_midi_lib_config.h"
 #include "pico_pico_midi_lib.h"
@@ -48,13 +47,12 @@
 #include "class/midi/midi_device.h"
 #include "usb_descriptors.h"
 #include "../common/pico-mc-display-bridge-cmds.h"
-//#include "mc_bridge_model.h"
-//#include "mc_settings_file.h"
 #include "settings_file.h"
 #include "view_manager.h"
 #include "midi_processor_manager.h"
 #include "midi_processor_home_screen.h"
-
+#include "midi_processor_mc_display.h"
+#include "midi_processor_no_settings_view.h"
 // On-board LED mapping. If no LED, set to NO_LED_GPIO
 const uint NO_LED_GPIO = 255;
 const uint LED_GPIO = 25;
@@ -171,20 +169,9 @@ public:
     Mc_channel_strip_display channel_disp7;
     Mc_channel_strip_display* channel_disp[num_chan_displays];
     View_manager tc_view_manager;
-    //Mc_bridge_model model;
-    //Mc_settings_file settings_file;
-    //Setup_menu setup_menu;
     Home_screen setup_menu;
     Mc_seven_seg_display seven_seg;
-    static const size_t max_sysex = 2048; // the maximum MC SySex message is 120 bytes long, but fortune favors the prepared
-
-    // TODO group these two into an array of structs; one element for every virtual cable
-    uint8_t sysex_message[max_sysex]; // TODO: make one for every virtual cable for this device
-    size_t sysex_idx;  // the index into the sysex_message array // TODO: make one for every virtual cable for this device
-
-    bool waiting_for_eox;
     void *midi_uart_instance;
-    //Mc_fader_sync fader_sync[9];
     enum {
         Dev_descriptor, // Getting the Device Descriptor
         Conf_descriptor, // Getting the configuration descriptor
@@ -258,13 +245,9 @@ rppicomidi::Pico_mc_display_bridge_dev::Pico_mc_display_bridge_dev()  : addr{OLE
     channel_disp6{screen6, 6},
     channel_disp7{screen7, 7},
     channel_disp{&channel_disp0,&channel_disp1,&channel_disp2,&channel_disp3,&channel_disp4,&channel_disp5,&channel_disp6,&channel_disp7},
-    //settings_file{model},
     setup_menu{screen_tc, ""},
     seven_seg{tc_view_manager, screen_tc, false, false, setup_menu},
-    sysex_idx{0}, waiting_for_eox{false},
-    state{Dev_descriptor} /*,
-    core1_gpio{Core1_gpio::instance()},
-    prev_encoder_sw_pressed{false}*/
+    state{Dev_descriptor}
 {
     gpio_init(LED_GPIO);
     gpio_set_dir(LED_GPIO, GPIO_OUT);
@@ -287,8 +270,11 @@ rppicomidi::Pico_mc_display_bridge_dev::Pico_mc_display_bridge_dev()  : addr{OLE
             success = screen_tc.task();
     }
     assert(success);
+    Midi_processor_mc_display_core::instance().init(num_chan_displays, channel_disp, &seven_seg);
     // create the instance of the MIDI Processor Manager attach the screen
     Midi_processor_manager::instance().set_screen(&screen_tc);
+    Midi_processor_manager::instance().add_new_processor_type(Midi_processor_mc_display::static_getname(), Midi_processor_mc_display::static_make_new,
+                                                              Midi_processor_no_settings_view::static_make_new);
 
     // start the reporting of the settings encoder sw and settings encoder positions
     //assert(core1_gpio.request_status_update());
@@ -543,6 +529,7 @@ void rppicomidi::Pico_mc_display_bridge_dev::push_to_midi_uart(uint8_t* bytes, i
     }
 }
 
+#if 0
 bool rppicomidi::Pico_mc_display_bridge_dev::handle_mc_device_inquiry()
 {
     int nread = sysex_idx+1;
@@ -591,6 +578,7 @@ bool rppicomidi::Pico_mc_display_bridge_dev::handle_mc_device_inquiry()
     }
     return handled;
 }
+#endif
 #ifdef LOG_MIDI_TO_RAM
 volatile static uint8_t midi_log[1024*16];
 static int midi_log_idx = 0;
@@ -603,14 +591,14 @@ void rppicomidi::Pico_mc_display_bridge_dev::poll_usb_rx(bool connected)
         return;
     }
     uint8_t rx[4];
-    uint8_t nread = 0;
+    //uint8_t nread = 0;
 
     while(tud_midi_n_packet_read(0, rx)) {
         uint8_t const cable_num = (rx[0] >> 4) & 0xf;
         if (!Midi_processor_manager::instance().filter_midi_out(cable_num, rx)) {
             continue; // packet filtered out.
         }
-
+#if 0
         uint8_t const code_index = rx[0] & 0x0f;
         // MIDI 1.0 Table 4-1: Code Index Number Classifications
         switch(code_index)
@@ -816,6 +804,7 @@ void rppicomidi::Pico_mc_display_bridge_dev::poll_usb_rx(bool connected)
                 break;
         }
         success = false;
+        #endif
     } // end processing one USB MIDI packet
 }
 
@@ -895,6 +884,7 @@ void tud_mount_cb(void)
 {
     // TODO
     TU_LOG1("Mounted\r\n");
+    #if 0
     uint64_t now = time_us_64();
     using namespace rppicomidi;
     Pico_mc_display_bridge_dev::instance().serial_number[0] = now & 0x7Full;
@@ -904,6 +894,8 @@ void tud_mount_cb(void)
     Pico_mc_display_bridge_dev::instance().serial_number[4] = (now >> 32ull) & 0x7Full;
     Pico_mc_display_bridge_dev::instance().serial_number[5] = (now >> 40ull) & 0x7Full;
     Pico_mc_display_bridge_dev::instance().serial_number[6] = (now >> 48ull) & 0x7Full;
+    #endif
+    rppicomidi::Midi_processor_mc_display_core::instance().create_serial_number();
 }
 
 // Invoked when device is unmounted

@@ -23,12 +23,18 @@
  */
 #pragma once
 #include "midi_processor.h"
+#include "midi_processor_mc_display_core.h"
 namespace rppicomidi
 {
 class Midi_processor_mc_display : public Midi_processor
 {
 public:
-    
+    Midi_processor_mc_display() = delete;
+    Midi_processor_mc_display(uint16_t unique_id_) : Midi_processor{static_getname(), unique_id_} {}
+    bool process(uint8_t* packet) final { return Midi_processor_mc_display_core::instance().process(packet); }
+    static const char* static_getname() { return "MC Display"; }
+    static Midi_processor* static_make_new(uint16_t unique_id_) {return new Midi_processor_mc_display(unique_id_); }
 private:
+
 };
 }
