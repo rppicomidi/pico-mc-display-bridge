@@ -275,9 +275,6 @@ rppicomidi::Pico_mc_display_bridge_dev::Pico_mc_display_bridge_dev()  : addr{OLE
     Midi_processor_manager::instance().set_screen(&screen_tc);
     Midi_processor_manager::instance().add_new_processor_type(Midi_processor_mc_display::static_getname(), Midi_processor_mc_display::static_make_new,
                                                               Midi_processor_no_settings_view::static_make_new);
-
-    // start the reporting of the settings encoder sw and settings encoder positions
-    //assert(core1_gpio.request_status_update());
 }
 
 void rppicomidi::Pico_mc_display_bridge_dev::static_cmd_cb(uint8_t header, uint8_t* payload_, uint16_t length_)
@@ -529,56 +526,6 @@ void rppicomidi::Pico_mc_display_bridge_dev::push_to_midi_uart(uint8_t* bytes, i
     }
 }
 
-#if 0
-bool rppicomidi::Pico_mc_display_bridge_dev::handle_mc_device_inquiry()
-{
-    int nread = sysex_idx+1;
-    bool handled = false;
-    if (nread==7 && sysex_message[1]==0x00 && sysex_message[2]==0x00 && sysex_message[3]==0x66 &&
-        sysex_message[4]==0x14 && sysex_message[5]==0x00 && sysex_message[6] == 0xf7) {
-        // MC device query message; respond with the MC Host Connection Query
-        uint8_t host_connection_query[]= { 0xF0, // start sysex
-            0x00, 0x00, 0x66, // Mackie Manufacturer ID
-            0x14, // MCU Pro (0x14) with all displays
-            0x01, // Host Connection Query message ID
-            serial_number[0], serial_number[1], serial_number[2], serial_number[3], serial_number[4], serial_number[5], serial_number[6], // arbitrary serial number
-            0x01, 0x02, 0x03, 0x04, // arbitray
-            0xf7, // EOX
-        };
-        uint32_t nwritten = tud_midi_stream_write(0, host_connection_query, sizeof(host_connection_query));
-        if (nwritten != sizeof(host_connection_query)) {
-            TU_LOG1("Warning: Dropped %lu bytes of host_connection_query message\r\n", sizeof(host_connection_query) - nwritten);
-        }
-        else {
-            TU_LOG1("Sent Host Connection Query\r\n");
-        }
-        handled = true;
-    }
-    else if (nread==8 && sysex_message[1]==0x00 && sysex_message[2]==0x00 && sysex_message[3]==0x66 &&
-        sysex_message[4]==0x14 && sysex_message[5]==0x1A && sysex_message[6] == 0x00 && sysex_message[7] == 0xf7) {
-        uint8_t serial_number_response[] = { 0xF0, // start sysex
-            0x00, 0x00, 0x66, // Mackie Manufacturer ID
-            0x14, // MCU Pro
-            0x1B, 0x58, 0x59, 0x5A, // Response to serial number request
-            serial_number[0], serial_number[1], serial_number[2], serial_number[3], // The serial number
-            0xF7 // EOX
-        };
-        uint32_t nwritten = tud_midi_stream_write(0, serial_number_response, sizeof(serial_number_response));
-        if (nwritten != sizeof(serial_number_response)) {
-            TU_LOG1("Warning: Dropped %lu bytes of serial_number_response message\r\n", sizeof(serial_number_response) - nwritten);
-        }
-        else {
-            TU_LOG1("Sent Serial Number Response\r\n");
-        }
-        handled = true;
-    }
-    else if (nread >= 6 && sysex_message[1]==0x00 && sysex_message[2]==0x00 && sysex_message[3]==0x66 && sysex_message[4]==0x15) {
-        // message is for an extender. Ignore it
-        handled = true;
-    }
-    return handled;
-}
-#endif
 #ifdef LOG_MIDI_TO_RAM
 volatile static uint8_t midi_log[1024*16];
 static int midi_log_idx = 0;
@@ -591,220 +538,12 @@ void rppicomidi::Pico_mc_display_bridge_dev::poll_usb_rx(bool connected)
         return;
     }
     uint8_t rx[4];
-    //uint8_t nread = 0;
 
     while(tud_midi_n_packet_read(0, rx)) {
         uint8_t const cable_num = (rx[0] >> 4) & 0xf;
         if (!Midi_processor_manager::instance().filter_midi_out(cable_num, rx)) {
             continue; // packet filtered out.
         }
-#if 0
-        uint8_t const code_index = rx[0] & 0x0f;
-        // MIDI 1.0 Table 4-1: Code Index Number Classifications
-        switch(code_index)
-        {
-            case MIDI_CIN_MISC:
-            case MIDI_CIN_CABLE_EVENT:
-                // These are reserved and unused, possibly issue somewhere, skip this packet
-                continue;
-                break;
-
-            case MIDI_CIN_SYSEX_END_1BYTE:
-            case MIDI_CIN_1BYTE_DATA:
-                nread = 1;
-                break;
-
-            case MIDI_CIN_SYSCOM_2BYTE     :
-            case MIDI_CIN_SYSEX_END_2BYTE  :
-            case MIDI_CIN_PROGRAM_CHANGE   :
-            case MIDI_CIN_CHANNEL_PRESSURE :
-                nread = 2;
-                break;
-
-            default:
-                nread = 3;
-                break;
-        }
-        bool success = false;
-        int jdx;
-        int dropped_sysex = 0;
-        switch(rx[1]) {
-            case 0x90: // Note on (LED control message)
-                // Note message, channel 1
-                success = seven_seg.set_smpte_beats_by_mc_note(rx[2], rx[3]);
-                if (!success) {
-                    for (int chan = 0; !success && chan < num_chan_displays; chan++) {
-                        success = channel_disp[chan]->push_midi_message(rx+1, nread);
-                    }
-                }
-                // Pass this on
-                push_to_midi_uart(rx+1, nread, cable_num);
-                break;
-            case 0xB0: // Logic Control 7-segment message or VPot message
-                // CC message
-                success = seven_seg.set_digit_by_mc_cc(rx[2], rx[3]);
-                // filter this out if is a 7-seg LED digit message
-                if (!success) {
-                    push_to_midi_uart(rx+1, nread,cable_num);
-                }
-                if (!success) {
-                    for (int chan = 0; !success && chan < num_chan_displays; chan++) {
-                        success = channel_disp[chan]->push_midi_message(rx +1, 3);
-                    }
-                }
-                // only push the message if not a display message
-                if (!success)
-                    push_to_midi_uart(rx+1, nread, cable_num);
-                break;
-            case 0xBF: // 7-segment display message alternate
-                // Alternate CC message for timecode.
-                success = seven_seg.set_digit_by_mc_cc(rx[2], rx[3]);
-                // only push the message if not a display message
-                if (!success)
-                    push_to_midi_uart(rx+1, nread, cable_num);
-                // filter this out
-                break;
-            case 0xD0:  // Channel pressure (meter message)
-                for (int chan = 0; !success && chan < num_chan_displays; chan++) {
-                    success = channel_disp[chan]->push_midi_message(rx +1, 2);
-                }
-                // only push the message if not a display message
-                if (!success)
-                    push_to_midi_uart(rx+1, nread, cable_num);
-                break;
-            case 0xF0: // sysex start
-                sysex_message[0] = rx[1];
-                sysex_idx = 1;
-                dropped_sysex = 0;
-                for (jdx = 1; jdx <= nread && rx[jdx] != 0xF7; jdx++) {
-                    sysex_message[sysex_idx] = rx[jdx];
-                    // truncate sysex messages longer than we can store but leave room for EOX
-                    if (sysex_idx < max_sysex-1) {
-                        ++sysex_idx;
-                    }
-                    else {
-                        ++dropped_sysex;
-                    }
-                }
-                if (jdx == nread) {
-                    waiting_for_eox = true;
-                }
-                else {
-                    // must have found eox
-                    sysex_message[sysex_idx] = rx[jdx]; // copy eox
-                    if (dropped_sysex != 0) {
-                        TU_LOG1("Warning dropped %d sysex bytes\r\n", dropped_sysex);
-                    }
-                    if (!handle_mc_device_inquiry()) {
-                        if (!seven_seg.set_digits_by_mc_sysex(sysex_message, sysex_idx+1)) {
-                            int nsuccessful = 0;
-                            // have to try every channel strip
-                            for (int chan = 0; chan < num_chan_displays; chan++) {
-                                if (channel_disp[chan]->push_midi_message(sysex_message, sysex_idx+1)) {
-                                    ++nsuccessful;
-                                }
-                            }
-                            success = nsuccessful != 0;
-                        }
-                        if (!success) {
-                            // send it on over the MIDI UART
-                            push_to_midi_uart(sysex_message, sysex_idx+1,cable_num);
-
-                            printf("unhandled:\r\n");
-                            for (size_t kdx=0; kdx<=sysex_idx;kdx++) {
-                                printf("%02x ", sysex_message[kdx]);
-                            }
-                            printf("\n\r");
-                        }
-                    }
-                    waiting_for_eox = false;
-                    sysex_idx = 0;
-                }
-                break;
-            case 0xF7: // EOX
-                if (waiting_for_eox) {
-                    if (dropped_sysex != 0) {
-                        TU_LOG1("Warning dropped %d sysex bytes\r\n", dropped_sysex);
-                    }
-
-                    sysex_message[++sysex_idx] = rx[1];
-                    waiting_for_eox = false;
-                    if (!handle_mc_device_inquiry()) {
-                        if (!seven_seg.set_digits_by_mc_sysex(sysex_message, sysex_idx+1)) {
-                            // have to try every channel strip
-                            int nsuccessful = 0;
-                            for (int chan = 0; chan < num_chan_displays; chan++) {
-                                if (channel_disp[chan]->push_midi_message(sysex_message, sysex_idx+1)) {
-                                    ++nsuccessful;
-                                }
-                            }
-                            success = nsuccessful != 0;
-                        }
-                        if (!success) {
-                            push_to_midi_uart(sysex_message, sysex_idx+1, cable_num); // send it on to the MIDI UART
-                            printf("unhandled:\r\n");
-                            for (size_t kdx=0; kdx<=sysex_idx;kdx++) {
-                                printf("%02x ",sysex_message[kdx]);
-                            }
-                            printf("\n\r");
-                        }
-                    }
-                }
-                waiting_for_eox = false;
-                sysex_idx = 0;
-                break;
-            default:
-                if (waiting_for_eox) {
-                    // Might be the middle of a sysex message or the tail end of one
-                    for (jdx = 1; jdx <=nread && (rx[jdx] & 0x80) == 0; jdx++) {
-                        sysex_message[sysex_idx++] = rx[jdx];
-                    }
-                    if ((rx[jdx] & 0x80) == 0) {
-                        if (rx[jdx] == 0xF7) {
-                            // we have the sysex whole message message
-                            if (dropped_sysex != 0) {
-                                TU_LOG1("Warning dropped %d sysex bytes\r\n", dropped_sysex);
-                            }
-
-                            sysex_message[++sysex_idx] = rx[1];
-                            waiting_for_eox = false;
-                            if (!handle_mc_device_inquiry()) {
-                                if (!seven_seg.set_digits_by_mc_sysex(sysex_message, sysex_idx+1)) {
-                                    // have to try every channel strip
-                                    int nsuccessful = 0;
-                                    for (int chan = 0; chan < num_chan_displays; chan++) {
-                                        if (channel_disp[chan]->push_midi_message(sysex_message, sysex_idx+1)) {
-                                            ++nsuccessful;
-                                        }
-                                    }
-                                    success = nsuccessful != 0;
-                                }
-                                if (!success) {
-                                    push_to_midi_uart(sysex_message, sysex_idx+1, cable_num); // send it on to the MIDI UART
-                                    printf("unhandled:\r\n");
-                                    for (size_t kdx=0; kdx<=sysex_idx;kdx++) {
-                                        printf("%02x ",sysex_message[kdx]);
-                                    }
-                                    printf("\n\r");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            // Something is very wrong. USB doesn't support inserting messages mid-stream
-                        }
-                        waiting_for_eox = false;
-                        sysex_idx = 0;
-                    }
-                }
-                else {
-                    // Just an unhandled message. Pass it on for the host
-                    push_to_midi_uart(rx+1, nread, cable_num);
-                }
-                break;
-        }
-        success = false;
-        #endif
     } // end processing one USB MIDI packet
 }
 
@@ -884,17 +623,7 @@ void tud_mount_cb(void)
 {
     // TODO
     TU_LOG1("Mounted\r\n");
-    #if 0
-    uint64_t now = time_us_64();
-    using namespace rppicomidi;
-    Pico_mc_display_bridge_dev::instance().serial_number[0] = now & 0x7Full;
-    Pico_mc_display_bridge_dev::instance().serial_number[1] = (now >> 8ull) & 0x7Full;
-    Pico_mc_display_bridge_dev::instance().serial_number[2] = (now >> 16ull) & 0x7Full;
-    Pico_mc_display_bridge_dev::instance().serial_number[3] = (now >> 24ull) & 0x7Full;
-    Pico_mc_display_bridge_dev::instance().serial_number[4] = (now >> 32ull) & 0x7Full;
-    Pico_mc_display_bridge_dev::instance().serial_number[5] = (now >> 40ull) & 0x7Full;
-    Pico_mc_display_bridge_dev::instance().serial_number[6] = (now >> 48ull) & 0x7Full;
-    #endif
+
     rppicomidi::Midi_processor_mc_display_core::instance().create_serial_number();
 }
 
