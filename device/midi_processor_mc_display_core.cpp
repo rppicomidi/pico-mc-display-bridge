@@ -98,7 +98,7 @@ bool rppicomidi::Midi_processor_mc_display_core::process(uint8_t* rx)
             sysex_message[0] = rx[1];
             sysex_idx = 1;
             dropped_sysex = 0;
-            for (jdx = 1; jdx <= nread && rx[jdx] != 0xF7; jdx++) {
+            for (jdx = 2; jdx < 4 && rx[jdx] != 0xF7; jdx++) {
                 sysex_message[sysex_idx] = rx[jdx];
                 // truncate sysex messages longer than we can store but leave room for EOX
                 if (sysex_idx < max_sysex-1) {
@@ -108,7 +108,7 @@ bool rppicomidi::Midi_processor_mc_display_core::process(uint8_t* rx)
                     ++dropped_sysex;
                 }
             }
-            if (jdx == nread) {
+            if (jdx == 4) {
                 waiting_for_eox = true;
             }
             else {
@@ -149,7 +149,7 @@ bool rppicomidi::Midi_processor_mc_display_core::process(uint8_t* rx)
                     TU_LOG1("Warning dropped %d sysex bytes\r\n", dropped_sysex);
                 }
 
-                sysex_message[++sysex_idx] = rx[1];
+                sysex_message[sysex_idx] = rx[1];
                 waiting_for_eox = false;
                 if (!handle_mc_device_inquiry()) {
                     if (!seven_seg->set_digits_by_mc_sysex(sysex_message, sysex_idx+1)) {
@@ -178,17 +178,17 @@ bool rppicomidi::Midi_processor_mc_display_core::process(uint8_t* rx)
         default:
             if (waiting_for_eox) {
                 // Might be the middle of a sysex message or the tail end of one
-                for (jdx = 1; jdx <=nread && (rx[jdx] & 0x80) == 0; jdx++) {
+                for (jdx = 1; jdx < 4 && (rx[jdx] & 0x80) == 0; jdx++) {
                     sysex_message[sysex_idx++] = rx[jdx];
                 }
-                if ((rx[jdx] & 0x80) == 0) {
+                if (jdx < 4) {
                     if (rx[jdx] == 0xF7) {
                         // we have the sysex whole message message
                         if (dropped_sysex != 0) {
                             TU_LOG1("Warning dropped %d sysex bytes\r\n", dropped_sysex);
                         }
 
-                        sysex_message[++sysex_idx] = rx[1];
+                        sysex_message[sysex_idx] = 0xF7;
                         waiting_for_eox = false;
                         if (!handle_mc_device_inquiry()) {
                             if (!seven_seg->set_digits_by_mc_sysex(sysex_message, sysex_idx+1)) {
