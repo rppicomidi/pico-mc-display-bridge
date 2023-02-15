@@ -243,7 +243,7 @@ bool rppicomidi::Midi_processor_mc_display_core::handle_mc_device_inquiry()
             0x01, 0x02, 0x03, 0x04, // arbitray
             0xf7, // EOX
         };
-        uint32_t nwritten = tud_midi_stream_write(0, host_connection_query, sizeof(host_connection_query));
+        uint32_t nwritten = tud_midi_stream_write(cable_num, host_connection_query, sizeof(host_connection_query));
         if (nwritten != sizeof(host_connection_query)) {
             TU_LOG1("Warning: Dropped %lu bytes of host_connection_query message\r\n", sizeof(host_connection_query) - nwritten);
         }
@@ -261,7 +261,7 @@ bool rppicomidi::Midi_processor_mc_display_core::handle_mc_device_inquiry()
             serial_number[0], serial_number[1], serial_number[2], serial_number[3], // The serial number
             0xF7 // EOX
         };
-        uint32_t nwritten = tud_midi_stream_write(0, serial_number_response, sizeof(serial_number_response));
+        uint32_t nwritten = tud_midi_stream_write(cable_num, serial_number_response, sizeof(serial_number_response));
         if (nwritten != sizeof(serial_number_response)) {
             TU_LOG1("Warning: Dropped %lu bytes of serial_number_response message\r\n", sizeof(serial_number_response) - nwritten);
         }

@@ -62,7 +62,7 @@ public:
     bool process(uint8_t* packet);
     void create_serial_number();
 
-    void set_cable(uint8_t cable_) {if (cable_cb) cable_cb(cable_, set_cable_context); }
+    void set_cable(uint8_t cable_) { cable_num = cable_; if (cable_cb) cable_cb(cable_, set_cable_context); }
     void register_set_cable_callback(void (*cable_cb_)(uint8_t, void*), void* context_) {cable_cb =cable_cb_; set_cable_context = context_; }
 private:
     Midi_processor_mc_display_core() :
@@ -81,5 +81,6 @@ private:
     uint8_t serial_number[7];
     void (*cable_cb)(uint8_t, void*);
     void* set_cable_context;
+    uint8_t cable_num;
 };
 }
