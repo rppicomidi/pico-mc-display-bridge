@@ -37,6 +37,7 @@
 #include "tusb.h"
 #include "class/midi/midi_host.h"
 #include "nav_buttons.h"
+#include "midi_buttons.h"
 
 namespace rppicomidi
 {
@@ -96,6 +97,7 @@ public:
     uint16_t string_xfer_buffer[128];
     enum {Disconnected, Device_setup, Operating} state;
     Nav_buttons nav;
+    Midi_buttons midi_buttons;
     // Make the command definitions class variables
     #include "../common/pico-mc-display-bridge-cmds.h"
 };
@@ -291,6 +293,7 @@ void rppicomidi::Pico_mc_display_bridge_host::task()
                 if (connected)
                     tuh_midi_stream_flush(midi_dev_addr);
                 poll_usb_rx(connected);
+                midi_buttons.poll();
                 rppicomidi::Pico_pico_midi_lib::instance().drain_tx_buffer();
                 break;
             default:

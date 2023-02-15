@@ -47,6 +47,13 @@ static const uint8_t NAV_BUTTON_DIR_MASK=(NAV_BUTTON_UP|NAV_BUTTON_DOWN|NAV_BUTT
 static const uint8_t NAV_BUTTON_SELECT=0x10;
 static const uint8_t NAV_BUTTON_BACK=0x20;
 static const uint8_t NAV_BUTTON_SHIFT=0x40;
+static const uint8_t RETURN_MC_CABLE=0x51;
+static const uint8_t RETURN_MC_BNT_FN=0x52;
+static const uint8_t MC_BTN_FN_SEL=0x00;
+static const uint8_t MC_BTN_FN_SOLO=0x01;
+static const uint8_t MC_BTN_FN_MUTE=0x02;
+static const uint8_t MC_BTN_FN_REC=0x03;
+static const uint8_t MC_BTN_FN_VPOT=0x04;
 // The configuration descriptor may be too long to send back in one go
 static const uint8_t REQUEST_CONF_DESC_0=0x49; // Request the first up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor
 static const uint8_t RETURN_CONF_DESC_0=0x4A;  // Return the first up to CONFIG_DESC_MAX_PAYLOAD bytes of the descriptor

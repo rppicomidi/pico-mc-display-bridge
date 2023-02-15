@@ -61,9 +61,12 @@ public:
     }
     bool process(uint8_t* packet);
     void create_serial_number();
+
+    void set_cable(uint8_t cable_) {if (cable_cb) cable_cb(cable_, set_cable_context); }
+    void register_set_cable_callback(void (*cable_cb_)(uint8_t, void*), void* context_) {cable_cb =cable_cb_; set_cable_context = context_; }
 private:
     Midi_processor_mc_display_core() :
-            num_chan_displays{0}, channel_disp{nullptr}, seven_seg{nullptr}, sysex_idx{0}, waiting_for_eox{false}
+            num_chan_displays{0}, channel_disp{nullptr}, seven_seg{nullptr}, sysex_idx{0}, waiting_for_eox{false}, cable_cb{nullptr}, set_cable_context{nullptr}
     {
         create_serial_number(); // make sure the serial_number variable is valid;
     }
@@ -76,5 +79,7 @@ private:
     size_t sysex_idx;  // the index into the sysex_message array
     bool waiting_for_eox;
     uint8_t serial_number[7];
+    void (*cable_cb)(uint8_t, void*);
+    void* set_cable_context;
 };
 }

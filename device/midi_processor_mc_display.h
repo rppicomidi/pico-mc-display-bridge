@@ -30,10 +30,12 @@ class Midi_processor_mc_display : public Midi_processor
 {
 public:
     Midi_processor_mc_display() = delete;
-    Midi_processor_mc_display(uint16_t unique_id_) : Midi_processor{static_getname(), unique_id_} {}
+    Midi_processor_mc_display(uint16_t unique_id_, uint8_t cable_) : Midi_processor{static_getname(), unique_id_} {
+        Midi_processor_mc_display_core::instance().set_cable(cable_);
+    }
     bool process(uint8_t* packet) final { return Midi_processor_mc_display_core::instance().process(packet); }
     static const char* static_getname() { return "MC Display"; }
-    static Midi_processor* static_make_new(uint16_t unique_id_) {return new Midi_processor_mc_display(unique_id_); }
+    static Midi_processor* static_make_new(uint16_t unique_id_, uint8_t cable) {return new Midi_processor_mc_display(unique_id_, cable); }
 private:
 
 };

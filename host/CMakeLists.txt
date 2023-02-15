@@ -13,6 +13,7 @@ add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../lib/pico_pico_midi_lib lib/pico_pi
 add_executable(pico-mc-display-bridge-host
     pico-mc-display-bridge-host.cpp
     nav_buttons.cpp
+    midi_buttons.cpp
 )
 
 pico_enable_stdio_uart(pico-mc-display-bridge-host 1)

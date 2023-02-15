@@ -29,13 +29,15 @@
 #include <cstring>
 #include <cstdio>
 #include "mc_seven_seg_display.h"
+#include "../common/pico-mc-display-bridge-cmds.h"
 
 rppicomidi::Mc_seven_seg_display::Mc_seven_seg_display(View_manager& view_manager_, Mono_graphics& screen_, bool smpte_led_, bool beats_led_, View& setup_menu_) :
     View{screen_, screen_.get_clip_rect()},
     view_manager{view_manager_}, seven_seg_font{screen.get_font_24()}, label_font{screen.get_font_8()},
     smpte_led{smpte_led_}, beats_led{beats_led_},
     nbeat_digits{3}, nbars_digits{2}, nsubs_digits{2}, nticks_digits{3}, nmode_digits{2},
-    setup_menu{setup_menu_}
+    setup_menu{setup_menu_},
+    chan_button_mode{MC_BTN_FN_SEL}
 {
     memset(digits, ' ', sizeof(digits));
 }
@@ -63,6 +65,10 @@ void rppicomidi::Mc_seven_seg_display::draw()
         }
         // draw the mode label
         center_label("mode",0,tc_y,nmode_digits,true);
+        // draw the channel strip button mode
+        uint8_t mode_y = screen.get_screen_height()- seven_seg_font.height - label_font.height;
+        uint8_t mode_x = seven_seg_font.width * 6;
+        screen.draw_string(seven_seg_font, mode_x, mode_y, chan_but_mode_names[chan_button_mode], 4, Pixel_state::PIXEL_ONE, Pixel_state::PIXEL_ZERO);
     }
 }
 

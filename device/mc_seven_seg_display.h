@@ -96,6 +96,11 @@ public:
      * @param byte2 0x00 is LED off, 0x01 or 0x7f is on
      */
     bool set_smpte_beats_by_mc_note(uint8_t byte1, uint8_t byte2);
+
+    void set_chan_button_mode(uint8_t mode) {
+        if (mode < 5) chan_button_mode = mode;
+        if (view_manager.is_current_view(this)) draw();
+    }
 private:
     // Get rid of default constructor and copy constructor
     Mc_seven_seg_display() = delete;
@@ -113,5 +118,7 @@ private:
     const uint8_t nmode_digits;
     char digits[12];
     View& setup_menu;
+    uint8_t chan_button_mode;
+    static constexpr const char *chan_but_mode_names[5] = {"SEL ", "SOLO", "MUTE", "REC ", "VPOT"};
 };
 }

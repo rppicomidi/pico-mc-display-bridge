@@ -105,6 +105,7 @@ public:
     bool handle_mc_device_inquiry();
     void push_to_midi_uart(uint8_t* bytes, int nbytes, uint8_t cable_num);
     void request_dev_desc();
+    static void static_handle_set_mc_cable(uint8_t cable_, void* context_);
     const uint NO_LED_GPIO=255;
     const uint LED_GPIO=25;
     const uint8_t OLED_ADDR=0x3c;
@@ -271,6 +272,7 @@ rppicomidi::Pico_mc_display_bridge_dev::Pico_mc_display_bridge_dev()  : addr{OLE
     }
     assert(success);
     Midi_processor_mc_display_core::instance().init(num_chan_displays, channel_disp, &seven_seg);
+    Midi_processor_mc_display_core::instance().register_set_cable_callback(static_handle_set_mc_cable, this);
     // create the instance of the MIDI Processor Manager attach the screen
     Midi_processor_manager::instance().set_screen(&screen_tc);
     Midi_processor_manager::instance().add_new_processor_type(Midi_processor_mc_display::static_getname(), Midi_processor_mc_display::static_make_new,
@@ -423,6 +425,11 @@ void rppicomidi::Pico_mc_display_bridge_dev::cmd_cb(uint8_t header, uint8_t* pay
                         tc_view_manager.on_right(1, is_shifted);
                         break;
                 }
+            }
+            break;
+        case RETURN_MC_BNT_FN:
+            if (length_ == 1 && payload_[0] < 5) {
+                seven_seg.set_chan_button_mode(payload_[0]);
             }
             break;
     }
@@ -695,4 +702,9 @@ void rppicomidi::Pico_mc_display_bridge_dev::get_product_string(uint8_t stridx, 
             }
         }
     }
+}
+
+void rppicomidi::Pico_mc_display_bridge_dev::static_handle_set_mc_cable(uint8_t cable_, void*)
+{
+    Pico_pico_midi_lib::instance().write_cmd_to_tx_buffer(RETURN_MC_CABLE, &cable_, 1);
 }

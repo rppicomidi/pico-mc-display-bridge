@@ -18,7 +18,6 @@ add_executable(${target_name}
     mc_bridge_usb_dev.cpp
     mc_channel_strip_display.cpp
     mc_channel_text.cpp
-    mc_fader_sync.cpp
     mc_meter.cpp
     mc_seven_seg_display.cpp
     mc_vpot_display.cpp
