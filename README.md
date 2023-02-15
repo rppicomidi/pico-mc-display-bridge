@@ -1,8 +1,10 @@
 # pico-mc-display-bridge
 
+![](pico-mc-display-bridge.jpg)
+
 Most Digital Audio Workstation (DAW) programs and many live audio products support Mackie Control (MC) protocol for controlling levels, transport controls, channel muting, etc. There are quite a few low-cost control surfaces on the market, but many lack features that more expensive controllers such as the Mackie MCU Pro or Behringer X-Touch support.
 
-This project uses two Raspberry Pi Pico boards to implement a channel strip, meter, and time display for USB MIDI control surfaces that support Mackie Control (MC) protocol but do not have displays. You insert the pico-mc-bridge in line with the USB connection from the DAW to the control surface. One Pico board acts as a USB Device and connects to the DAW or other device that expects to talk with a MC control surface. The other Pico board acts as a USB host and connects to the MC compatible control surface, and it acts as a button interface for the additional buttons provided.
+This project uses two Raspberry Pi Pico boards to implement a channel strip, meter, and time display for USB MIDI control surfaces that support Mackie Control (MC) protocol but do not have displays. You insert the `pico-mc-display-bridge` in line with the USB connection from the DAW to the control surface. One Pico board acts as a USB Device and connects to the DAW or other device that expects to talk with a MC control surface. The other Pico board acts as a USB host and connects to the MC compatible control surface, and it acts as a button interface for the additional buttons provided. The photo shows the `pico-mc-display-bridge` between a PC running the Cubase DAW and a Korg nanoKONTROL studio.
 
 The two Pico boards together form what should be a transparent interface between the control surface and the DAW. The Host Pico reads the control surface USB device information and sends it to the Device Pico before the Device Pico initializes its USB stack. When the DAW computer asks the Device Pico for its device information, it sends the information of the connected control surface instead.
 
@@ -10,31 +12,46 @@ The pico-mc-display-bridge supports:
 
 - one 64x128 (portrait mode) OLED per channel strip that shows
 	- 2 lines of 7 characters of text
-	- a representation of the MC VPot LEDs,
-	- a representation of the MC meter LEDs, 
-	- a representation of the REC, MUTE, SOLO and SEL button LEDs.
-- one 128x64 (landscape mode) OLED for time display (either Bars/Beats/Subdivisions/ticks or SMPTE timecode), VPot mode display (a two-digit 7-segment display on the Mackie MCU Pro, for example). This display is shared with the MIDI Processor UI (see below)
-- one button per channel strip that can function as either Select, Mute, Solo, Record or VPot press depending on which of the mode buttons was last pressed.
-- one button for choosing name or value display
-- one button for choosing the time display mode (Bars/Beats/Subdivisions/Ticks or SMPTE Timecode).
-- 7 buttons (or a 5-way navigation switch plus 2 buttons) for navigating the MIDI processor UI
-- a MIDI processor unit that determines which virtual MIDI cable in the MIDI USB stream is carrying MC data, and that implements useful features such as fader soft pickup to prevent value jumps when you move faders, button remap, etc. The MIDI processor settings are stored in the Device Pico's program flash memory. Each MC device type (unique USB VID and PID) can have up to 8 preset settings that you can recall using the MIDI Processor UI.
+	- a representation of the MC VPot LEDs (above the text),
+	- a representation of the MC meter LEDs (to the right of the VPot LEDs),
+	- a representation of the REC, MUTE, SOLO and SEL button LEDs (above the VPot LEDs).
+- one 128x64 (landscape mode) OLED for time display (either Bars/Beats/Subdivisions/ticks or SMPTE timecode), VPot mode display (the two-digit 7-segment display on the Mackie MCU Pro, for example), and the channel strip button mode. This display is shared with the MIDI Processor UI (see below)
+- one button per channel strip (the black buttons in the photo)that can function as either Select, Mute, Solo, Record or VPot press depending on which of the 4 mode buttons (yellow, blue, red or white button) was last pressed.
+- one button for choosing name or value display (green button)
+- one button for choosing the time display mode (Bars/Beats/Subdivisions/Ticks or SMPTE Timecode, the gray button).
+- 7 buttons (or a 5-way navigation switch plus 2 buttons) for navigating the MIDI processor UI (located on the blue board above the landscape display)
+- a MIDI processor unit that determines which virtual MIDI cable in the MIDI USB stream is carrying MC data, and that implements useful features such as fader soft pickup (to prevent value jumps when you move faders), button remap, etc. The MIDI processor settings are stored in the Device Pico's program flash memory. Each MC device type (unique USB VID and PID) can have up to 8 preset settings that you can recall using the MIDI Processor UI.
 # Hardware
 ## Bill of Materials
-- 2x Raspberry Pi Pico (not Pico W)
-- 9x 0.96 128x64 OLED modules. I chose displays that show white dots, but these are available in blue dots, yellow dots, etc. Shop carefully. I was able to find a 10-pack for about $2.30/display.
+This is what I used for the project in the photo.
+
+- 2 Raspberry Pi Pico (not Pico W)
+- 4 20-pin 0.1 header pins (2 per Pico board)
+- 4 20-pin 0.1 header sockets (2 per Pico board)
+- 2 3-pin right angle header pins (for Picoprobe debug, one per Pico)
+- 2 2-pin right angle header pins (for Picoprobe UART0, one per Pico)
+- 9 0.96 128x64 OLED modules. I chose displays that show white dots, but these are available in blue dots, yellow dots, etc. Shop carefully. You can pay a lot for these. I was able to find a 10-pack for about $2.30/display.
+- 9 4 pin sockets (one for each display)
+- 14 tact switches with button caps
+- a 5-way navigation switch module board with 2 tact switches. You can just use 7 buttons if you prefer.
 - a microUSB to USB A female adapter (so you can connect your MIDI device to the pico-mc-display-bridge's USB host port)
 - a microUSB to USB A male plug (so you can connect your pico-mc-display-bridge to your DAW computer).
-- prototyping board, wire, an enclosure, etc.
+- prototyping board (I used one with double-sided plate through holes), standoffs, screws and nuts, 30 AWG wire for signals, 22 AWG wire for power and ground, solder.
 
 ## Wiring it up
-I did not draw a wiring diagram. Even though there are only 4 pins. the pinout of OLED modules will vary depending on the brand. Take special care to note which pin is GND, which will go to one of the Device Pico's ground pins, and which is VCC, which will go to the Device Pico's 3.3V power output. Each display draws no more that about 4 mA, so power draw should not be an issue. One pin of every button that is wired to the Host Pico is attached to ground; the other pin is attached to the Host Pico at the assigned pin. No pull-up resistors are required because the Host Pico enables the on-chip pull-up resistors. Buttons consume all of the unused I/O pins on the Host Pico.
+I did not draw a wiring diagram. The pin usage is documented below and in the code. Just wire signals directly from the Pico boards to the displays and one of the pins for each button. The VBus pin of the Device Pico connects directly to the VBus pin of the Host Pico. The UART1 pins of the Device Pico wire directly to the UART1 pins of the Host Pico. The Device Pico's 3.3V output provides power to all 9 OLEDs.
 
-Here is a photograph of how I wired my prototype. Note how the prototype each wires display ground pin to a Device Pico ground pin close to the I2C port the display uses.
+Even though there are only 4 pins. the pinout of OLED modules will vary depending on the brand. Take special care to note which pin is GND, which will go to one of the Device Pico's ground pins, and which is VCC, which will go to the Device Pico's 3.3V power output. Each display draws no more that about 4 mA, so power draw should not be an issue.
+
+One pin of every button that is wired to the Host Pico is attached to ground; the other pin is attached to the Host Pico at the assigned pin. No pull-up resistors are required because the Host Pico enables the on-chip pull-up resistors. Buttons consume all but one of non-UART I/O pins on the Host Pico.
+
+You don't see the Pico boards in the photo because I placed them on the other side of the board under the displays.
 
 ## I/O Pin Usage
+The following sections call out pins by GP number not Pico board pin number. It is documented this way to allow you to use any board that has the RP2040 on it as long as it has enough I/O pins available. UART pins are documented in TX, RX order. I2C pins are documented in SDA, SCL order.
+
 ### USB Device Pico
-The USB is configured in USB Device mode. This Pico controls 9 SSD1306-base 128x64 OLED modules over I2C. Some OLED modules have solder jumpers that allow selection of address 0x3C or 0x3D, but not all do. There is one OLED module per channel strip. The graphics driver code for this project allows you to update all 9 displays in parallel using 8 I2C ports from 2 PIO modules plus I2C1. The USB Device Pico communicates with the USB Host Pico via UART1. UART0 is used for debug console.
+The USB is configured in USB Device mode. This Pico controls 9 SSD1306-base 128x64 OLED modules over I2C. Some OLED modules have solder jumpers that allow selection of address 0x3C or 0x3D, but not all do. The code assumes all displays are on address 0x3C. There is one OLED module per channel strip. The graphics driver code for this project allows you to update all 9 displays in parallel using 8 I2C ports from 2 PIO modules plus I2C1. The USB Device Pico communicates with the USB Host Pico via UART1. UART0 is used for debug console.
 
 - UART0 on pins GP0 and GP1 is used with the picoprobe for debug console
 - I2C1 on pins GP2 and GP3 is wired to the timecode OLED
@@ -75,7 +92,8 @@ pico-mc-display-bridge/
     host/
     lib/
     LICENSE
-    README.md    
+    README.md
+    (any jpg files)
 ```
 The `device` directory contains the source code for the Device Pico and the `host` directory contains the source code for the Host Pico. You must build one image for each Pico, and program each Pico with the appropriate image.
 
@@ -141,18 +159,21 @@ The build image is called `pico-mc-display-bridge-host.uf2`. Use the one of the 
 lighting up and the computer should enumerate the pico-mc-display-bridge as if you had attached the MIDI device directly to the computer.
 
 ## Setup and Navigation
-There are 7 navigation buttons. Holding a button causes the button press to repeat.
+There are 7 navigation buttons: Up, Down, Left, Right and Shift.
+In the photo of the hardware, navigation buttons are on the blue board.
+The 5 way switch implements the first 5 buttons. BACK is labeled SET and SHIFT is labeled RST. Holding a button causes the button press to repeat.
+
 When you press the Select Button, the pico-mc-display-bridge enters MIDI Processor setup mode. The landscape OLED screen will show text menus. Use the Up and Down buttons to navigate to a menu item. Holding shift while pressing Up or Down buttons scroll more than one step. Menu items you can modify will show in reverse video. When you press the the Select button the pico-mc-display-bridge will either enter a sub-menu or execute a command.
 
 When there is more than one editable field on a menu, use the Left and Right buttons to navigate among them. If you add an item to a menu and want to delete it, hold Shift and press the Left button.
 
 To return to the previous menu, press the Back button.
 
-To exit setup mode, either press the Back button repeatedly or hold shift and press the Back button (this is Go Home function).
+To exit setup mode, either press the Back button repeatedly or hold Shift and press the Back button (this is Go Home function).
 
 ## Tell the pico-mc-display-bridge on what port to find display messages
 
-USB MIDI can have up to 16 MIDI ports per bulk USB endpoint. Dedicated control surfaces such as the Korg nanoKONTROL Studio have only one MIDI IN port and one MIDI OUT port. However, many keyboard control surfaces such as the Arturia KeyLab Essential 88 have multiple MIDI ports per USB cable;there is a dedicated USB port for MC messages, and one or more dedicated ports for the music keyboard, pads, step sequencer, etc. Before the pico-mc-display-bridge will display any MC data on the OLEDs, you have to tell it where to find MC traffic. To do that, you will use the built-in MIDI processor unit to route MIDI data to the display processor. Because the MC data is coming from the DAW MIDI OUT, you need to set up the processing on the MIDI OUT path.
+USB MIDI can have up to 16 MIDI ports per bulk USB endpoint. Dedicated control surfaces such as the Korg nanoKONTROL Studio have only one MIDI IN port and one MIDI OUT port. However, many keyboard control surfaces such as the Arturia KeyLab Essential 88 have multiple MIDI ports per USB cable; there is a dedicated USB port for MC messages, and one or more dedicated ports for the music keyboard, pads, step sequencer, etc. Before the pico-mc-display-bridge will display any MC data on the OLEDs, you have to tell it where to find MC traffic. To do that, you will use the built-in MIDI processor unit to route MIDI data to the display processor. Because the MC data is coming from the DAW MIDI OUT, you need to set up the processing on the MIDI OUT path.
 
 1. Press the Select button on the navigation switches so that the landscape mode timecode and VPot mode display switches to the processor setup menu.
 2. Use the navigation buttons to select `Setup MIDI Out N...` where N is
@@ -173,29 +194,25 @@ The `Channel Button Remap` processor is useful if the button messages your contr
 Other processors that are specific to individual control surfaces may be added to the processing library in the future.
 
 ## Per channel strip buttons
-There is one button per channel strip and 5 buttons that determine what happens when you press the channel strip button. The 5 buttons are labeled
-- Sel
-- Solo
-- VPot
-- Mute
-- Rec
+There is one button per channel strip and 4 buttons that determine what happens when you press the channel strip button. Each of the 8 per channel strip buttons is black in the hardware photo. What MIDI message the pico-mc-display-bridge sends to the DAW is determined
+by the channel button mode, which is displayed on the lower right of the landscape OLED:
+- SEL : a per channel button press will select the channel
+- SOLO : a per channel button press will solo the channel
+- MUTE : a per channel button press will mute the channel
+- REC : a per channel button press will arm the channel for record
+- VPOT : a per channel button press corresponds to pressing the VPOT switch for that channel.
 
-At reset, or after you press and release the Sel button, a per channel strip button will send the MC channel select message for that channel to the DAW.
+You press the Yellow button to toggle the mode between SEL and SOLO.
+You press the Blue button to toggle the mode between SEL and MUTE.
+You press the Red button to toggle the mode between SEL and REC.
+You press the White button to toggle the mode between SEL and VPOT.
 
-After you press and release the Solo button, pressing the per channel strip button will send the MC channel solo message for that channel to the DAW.
-
-After you press and release the VPot button, pressing the per channel strip button will send the MC VPot switch press message for that channel to the DAW.
-
-After you press and release the Mute button, pressing the per channel strip button will send the MC channel mute message for that channel to the DAW.
-
-After you press and release the Rec button, pressing the per channel strip button will send the MC channel Rec message for that channel to the DAW.
-
-The bottom right 4 characters landscape OLED display will tell you what mode is active for the per channel strip buttons.
+You can directly change mode from one to another just by pressing another button.
 
 ## Other buttons
 
-- Beats/SMPTE button press will send the Beats/SMPTE toggle message to the DAW. Normally this button will tell your DAW to toggle the time display between Bars-Beats and SMPTE Timecode. Most DAWs support this.
-- Name/Value button press will send the Name/Value toggle message to the DAW. Normally this will tell your DAW to change whether the channel strip displays show the parameter name or the value. Not all DAWs support this.
+- Beats/SMPTE gray button press will send the Beats/SMPTE toggle message to the DAW. Normally this button will tell your DAW to toggle the time display between Bars-Beats and SMPTE Timecode. Most DAWs support this.
+- Name/Value green button press will send the Name/Value toggle message to the DAW. Normally this will tell your DAW to change whether the channel strip displays show the parameter name or the value. Not all DAWs support this.
 
 # Pico-Pico Message Format
 The two Pico boards are connected via UART1. If the interface only had to convey a single MIDI cable's worth of MIDI data, then the connection could contain the raw MIDI stream in both directions. However, the connected control surface may support up to 16 MIDI streams. In addition, the Device Pico needs to know some USB descriptor parameters from the MIDI device connected to the Host Pico:
@@ -216,7 +233,8 @@ All messages that are not MIDI data stream messages are formatted:
 cmd length [payload] checksum
 ```
 
-where `cmd` is a single unsigned byte value larger than the largest MIDI header byte value, `length` is the number of bytes in the payload (may be 0), `payload` is the array of `length` data bytes (will be empty if `length` is 0) and `checksum` is the XOR of all bytes from the `cmd` byte to the last `payload` byte.
+where `cmd` is a single unsigned byte value larger than the largest MIDI header byte value, `length` is the number of bytes in the payload (may be 0), `payload` is the array of `length` data bytes (will be empty if `length` is 0) and `checksum` is the XOR of all bytes from the `cmd` byte to the last `payload` byte. You can find the encoding details for these messages
+in `common/pico-mc-display-bridge-cmds.h`.
 
 ## MIDI data stream
 
@@ -379,21 +397,4 @@ The host sends the channel button mode to the device in response to button press
 # References
 [This site](https://sites.google.com/view/mackiecontroluniversaldiyguide/home) 
 documents the way MC uses MIDI. The Logic Control guide documents most of what you need. MC protocol uses 0x14 instead of 0x10 and 0x15 instead of 0x11 for the product IDs. There are some messages that are not documented here. I found some of these out by web search engine in forums, a look at the [Cakewalk Control Surface SDK](https://github.com/Cakewalk/Cakewalk-Control-Surface-SDK), and when all else failed, by using my DAW and [MidiView](https://hautetechnique.com/midi/midiview/).
-
-# Future Features
-## Message Filter/Converter
-Many of the MC implementations are not quite right or not quite what you want. The filter/converter block will convert messages from the controller into proper MC protocol and convert MC protocol into messages the controller better understands. This block could also convert control surfaces that are not compatible with MC protocol to MC protocol. Note control
-surfaces can include MIDI keyboards that send slider messages if you want to use a keyboard's
-sliders to control your mix.
-
-## Add Rotary Encoders
-Many control surfaces don't have rotary encoders for VPots or Jog Wheels. Some controllers implement VPots using potentiometers, which is not as nice as using a real rotary encoder. There are just enough pins on the device side Pico to add 8 encoders for VPots. Two of the 10
-available pins on the Host Pico could be used for a jog wheel encoder. The VPot press
-switches could be replaced with the press switch function of the encoders; you can use
-the same 8 pins on the Host Pico for this.
-
-## Add Transport Buttons
-Some control surfaces do not have transport control (play, stop, record, etc.) buttons. You
-can use some of the unused GPIO pins on the USB Host Pico for adding more buttons.
-
 
