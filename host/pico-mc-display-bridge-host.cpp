@@ -68,6 +68,7 @@ public:
 
     static void midi_cb(uint8_t *buffer, uint8_t buflen, uint8_t cable_num);
     static void cmd_cb(uint8_t header, uint8_t* buffer, uint16_t length);
+    static void err_cb(uint8_t header, uint8_t* buffer, uint16_t length);
     /**
      * @brief Perform periodic actions
      */
@@ -227,10 +228,21 @@ void rppicomidi::Pico_mc_display_bridge_host::cmd_cb(uint8_t header, uint8_t* pa
     }
 }
 
+void rppicomidi::Pico_mc_display_bridge_host::err_cb(uint8_t, uint8_t*, uint16_t)
+{
+    // uh, oh. Something went wrong.
+    if (instance().state != Operating) {
+        printf("pico-pico error during device setup; data dropped\r\n");
+    }
+    else {
+        printf("pico-pico error during operation; MIDI dropped\r\n");
+    }
+}
+
 rppicomidi::Pico_mc_display_bridge_host::Pico_mc_display_bridge_host() :
   midi_dev_addr{0}, num_strings{0}, state{Disconnected}
 {
-    Pico_pico_midi_lib::instance().init(midi_cb, cmd_cb); // instantiate the Pico_pico_midi_lib class object and initialize it
+    Pico_pico_midi_lib::instance().init(midi_cb, cmd_cb, err_cb); // instantiate the Pico_pico_midi_lib class object and initialize it
     // Map the pins to functions
     gpio_init(LED_GPIO);
     gpio_set_dir(LED_GPIO, GPIO_OUT);
