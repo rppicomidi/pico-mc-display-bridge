@@ -106,6 +106,7 @@ public:
     void poll_midi_uart_rx(bool connected);
     bool handle_mc_device_inquiry();
     void push_to_midi_uart(uint8_t* bytes, int nbytes, uint8_t cable_num);
+    void push_to_midi_uart(uint8_t* packet, uint8_t cable_num);
     void request_dev_desc();
     static void static_handle_set_mc_cable(uint8_t cable_, void* context_);
     const uint NO_LED_GPIO=255;
@@ -551,6 +552,70 @@ void rppicomidi::Pico_mc_display_bridge_dev::push_to_midi_uart(uint8_t* bytes, i
     }
 }
 
+void rppicomidi::Pico_mc_display_bridge_dev::push_to_midi_uart(uint8_t* packet, uint8_t cable_num)
+{
+    uint8_t nbytes = 1; // Real-time, tune request, reset, EOX and undefined system common
+    static bool in_sysex = false;
+    // ignore the cin bits because some products do not implement that correctly
+    if (packet[1] < 0xF0 && packet[1]>= 80) {
+        in_sysex = false;
+        uint8_t status = packet[1] & 0xF0;
+        if (status == 0xC0 || status == 0xD0) {
+            nbytes = 2;
+        }
+        else {
+            nbytes = 3;
+        }
+    }
+    else if (packet[1] == 0xF1 || packet[1] == 0xF3) {
+        // MTC Quarter Frame or Song Select
+        nbytes = 2;
+    }
+    else if (packet[1] == 0xF2) {
+        // Song Position Pointer
+        nbytes = 3;
+    }
+    else if (packet[1] == 0xF0) {
+        if (packet[2] == 0xF7) {
+            nbytes = 2;
+        }
+        else if (packet[3] == 0xF7) {
+            nbytes = 3;
+        }
+        else {
+            nbytes = 3;
+            in_sysex = true;
+        }
+    }
+    else if (packet[1] == 0xF7) {
+        in_sysex = false;
+    }
+    else if (packet[1] < 0x80) {
+        if (in_sysex) {
+            // look for EOX
+            if (packet[2] == 0xF7) {
+                in_sysex = false;
+                nbytes = 2;
+            }
+            else if (packet[3] == 0xF7) {
+                in_sysex = false;
+                nbytes = 3;
+            }
+            else {
+                nbytes = 3;
+            }
+        }
+        else {
+            TU_LOG1("Warning: Dropped packet %02x %02x %02x %02x sending to UART MIDI Out\r\n", packet[0], packet[1], packet[2], packet[3]);
+            return; // packet is poorly formed. Drop it
+        }
+    }
+    uint8_t npushed = Pico_pico_midi_lib::instance().write_midi_to_tx_buffer(packet+1,nbytes,cable_num);
+    if (npushed != nbytes) {
+        TU_LOG1("Warning: Dropped %d bytes sending to UART MIDI Out\r\n", nbytes - npushed);
+    }
+}
+
 #ifdef LOG_MIDI_TO_RAM
 volatile static uint8_t midi_log[1024*16];
 static int midi_log_idx = 0;
@@ -558,8 +623,7 @@ static int midi_log_idx = 0;
 
 void rppicomidi::Pico_mc_display_bridge_dev::poll_usb_rx(bool connected)
 {
-    if (!connected || !tud_midi_available())
-    {
+    if (!connected || !tud_midi_available()) {
         return;
     }
     uint8_t rx[4];
@@ -569,6 +633,8 @@ void rppicomidi::Pico_mc_display_bridge_dev::poll_usb_rx(bool connected)
         if (!Midi_processor_manager::instance().filter_midi_out(cable_num, rx)) {
             continue; // packet filtered out.
         }
+        // packet is not filtered out. Send it across to the Host Pico
+        push_to_midi_uart(rx, cable_num);
     } // end processing one USB MIDI packet
 }
 
