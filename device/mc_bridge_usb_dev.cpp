@@ -97,9 +97,11 @@ public:
     } rx_packet[16]; // rx_packet[cbl] is the currently decoded packet for cable number cbl 0-15
     static void midi_cb(uint8_t *buffer, uint8_t buflen, uint8_t cable_num);
     static void static_cmd_cb(uint8_t header, uint8_t* buffer, uint16_t length);
+    static void static_err_cb(uint8_t header, uint8_t* buffer, uint16_t length);
     uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid);
     void get_product_string(uint8_t idx, char* strbuf);
     void cmd_cb(uint8_t header, uint8_t* buffer, uint16_t length);
+    void err_cb(uint8_t header, uint8_t* buffer, uint16_t length);
     void poll_usb_rx(bool connected);
     void poll_midi_uart_rx(bool connected);
     bool handle_mc_device_inquiry();
@@ -252,7 +254,7 @@ rppicomidi::Pico_mc_display_bridge_dev::Pico_mc_display_bridge_dev()  : addr{OLE
 {
     gpio_init(LED_GPIO);
     gpio_set_dir(LED_GPIO, GPIO_OUT);
-    Pico_pico_midi_lib::instance().init(nullptr, static_cmd_cb);
+    Pico_pico_midi_lib::instance().init(nullptr, static_cmd_cb, static_err_cb);
     memset(rx_packet, 0, sizeof(rx_packet));
     render_done_mask = 0;
 
@@ -282,6 +284,22 @@ rppicomidi::Pico_mc_display_bridge_dev::Pico_mc_display_bridge_dev()  : addr{OLE
 void rppicomidi::Pico_mc_display_bridge_dev::static_cmd_cb(uint8_t header, uint8_t* payload_, uint16_t length_)
 {
     instance().cmd_cb(header, payload_, length_);
+}
+
+void rppicomidi::Pico_mc_display_bridge_dev::static_err_cb(uint8_t header, uint8_t* buffer, uint16_t length)
+{
+    instance().err_cb(header, buffer, length);
+}
+
+void rppicomidi::Pico_mc_display_bridge_dev::err_cb(uint8_t, uint8_t*, uint16_t)
+{
+    // uh, oh. Something went wrong.
+    if (state != Operating) {
+        state = Dev_descriptor;
+    }
+    else {
+        printf("pico-pico error during operation; MIDI dropped\r\n");
+    }
 }
 
 void rppicomidi::Pico_mc_display_bridge_dev::cmd_cb(uint8_t header, uint8_t* payload_, uint16_t length_)
@@ -611,7 +629,7 @@ int main()
                 break;
         }
     }
-    Pico_pico_midi_lib::instance().init(Pico_mc_display_bridge_dev::midi_cb, Pico_mc_display_bridge_dev::static_cmd_cb);
+    Pico_pico_midi_lib::instance().init(Pico_mc_display_bridge_dev::midi_cb, Pico_mc_display_bridge_dev::static_cmd_cb, Pico_mc_display_bridge_dev::static_err_cb);
     tusb_init();
     while (1) {
         tud_task();
